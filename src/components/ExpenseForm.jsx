@@ -10,7 +10,7 @@ const CATEGORIES = [
   'Accommodation'
 ];
 
-export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm }) {
+export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, disabled }) {
   const [formData, setFormData] = useState({
     amount: '',
     category: '',
@@ -151,13 +151,17 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm }
         )}
 
         <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit">
-            Submit Request
-          </Button>
-        </div>
+                <Button variant="secondary" onClick={onCancel} disabled={disabled}>
+                    Cancel
+                </Button>
+                <Button 
+                    type="submit" 
+                    variant="primary"
+                    disabled={disabled}
+                >
+                    {disabled ? 'Adding...' : initialData ? 'Update Expense' : 'Add Expense'}
+                </Button>
+            </div>
       </form>
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
@@ -166,13 +170,21 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm }
           <div className="mt-4 space-y-4">
             <p>Are you sure you want to submit this expense request?</p>
             <div className="flex justify-end space-x-2">
-              <Button variant="secondary" onClick={() => setShowConfirm(false)}>
-                Cancel
-              </Button>
-              <Button onClick={confirmSubmit}>
-                Confirm
-              </Button>
-            </div>
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowConfirm(false)}
+              disabled={disabled}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmSubmit}
+              variant="primary"
+              disabled={disabled}
+            >
+              {disabled ? 'Adding...' : 'Confirm'}
+            </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>

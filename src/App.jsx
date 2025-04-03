@@ -13,6 +13,9 @@ import { NotificationList } from './components/NotificationList';
 import { ExpenseFilter } from './components/ExpenseFilter';
 import { Login } from './Components/Login';
 import { AdminApp } from './Components/Admin/AdminPage'; // Import the AdminApp component
+import { Toast } from './Components/ui/Toast';
+
+import { Tooltip } from './components/ui/Tooltip';
 
 // Authentication check function
 const isAuthenticated = () => {
@@ -69,10 +72,19 @@ function Dashboard() {
   const filterDropdownRef = useRef(null);
   const [approveRequests, setApproveRequests] = useState([]);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  // Add this with your other state declarations
+const [showDeleteToast, setShowDeleteToast] = useState(false);
+const [showApproveToast, setShowApproveToast] = useState(false);
+const [showRejectToast, setShowRejectToast] = useState(false);
+const [isLoading, setIsLoading] = useState(true);
+const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
 
   // Fetch expenses from the backend
   useEffect(() => {
     const fetchExpenses = async () => {
+      setIsLoading(true);
       try {
         const response = await axios.get(`http://localhost:8080/api/expenses/user?userId=${user.wissenID}`);
         setExpenses(Array.isArray(response.data) ? response.data : []);
@@ -80,9 +92,11 @@ function Dashboard() {
       } catch (error) {
         console.error('Error fetching expenses:', error);
         setExpenses([]);
+      } finally {
+        setIsLoading(false);
       }
     };
-
+  
     fetchExpenses();
   }, [user.wissenID]);
 
@@ -101,8 +115,13 @@ function Dashboard() {
   const fetchNotifications = async () => {
     try {
       const response = await axios.get(`http://localhost:8080/api/notifications/user/${user.wissenID}`);
-      setNotifications(response.data);
-      console.log("notifications",response.data);
+      // Sort notifications by createdAt date in descending order (newest first)
+      const sortedNotifications = response.data.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB - dateA; // This will sort in descending order (newest first)
+      });
+      setNotifications(sortedNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
@@ -110,7 +129,8 @@ function Dashboard() {
 
   const fetchApproveRequests = async () => {
     if (!user.isManager) return;
-  
+    
+    setIsLoadingApprovals(true);
     try {
       console.log("reportees", user.reportees);
       const approveRequestsPromises = user.reportees.map(reporteeWissenId =>
@@ -121,6 +141,8 @@ function Dashboard() {
       setApproveRequests(approveRequests);
     } catch (error) {
       console.error('Error fetching approve requests:', error);
+    } finally {
+      setIsLoadingApprovals(false);
     }
   };
 
@@ -147,69 +169,83 @@ function Dashboard() {
   const handleApprove = async (id) => {
     try {
       const targetExpense = approveRequests.find(expense => expense.id === id);
-      console.log(targetExpense);
       let response = await axios.put(`http://localhost:8080/api/expenses/${id}/status/approve?userId=${targetExpense.wissenID}&status=APPROVED&approvedBy=${user.wissenID}`);
       
-      if(response.status == 200){
+      if(response.status === 200){
+        const today = new Date().toLocaleDateString();
         await axios.post(`http://localhost:8080/api/notifications/`, {
-          message: `Your expense request for ${targetExpense.category}. And amount ${targetExpense.amount} has been approved.`,
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been approved. On ${today}`,
           status: 'APPROVED',
           userId: targetExpense.user.wissenID,
-              managerId: user.wissenID,
-              expenseId: id
-      });
-      
+          managerId: user.wissenID,
+          expenseId: id
+        });
+  
+        // Update both expenses and approveRequests states
+        setExpenses(expenses.map(expense =>
+          expense.id === id ? { ...expense, status: 'APPROVED'} : expense
+        ));
+        setApproveRequests(approveRequests.map(expense =>
+          expense.id === id ? { ...expense, status: 'APPROVED'} : expense
+        ));
+  
+        // Show success toast
+        setShowApproveToast(true);
+        setTimeout(() => setShowApproveToast(false), 3000);
+  
+        const newNotification = {
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been approved. On ${today}`,
+          status: 'APPROVED',
+          userId: targetExpense.user.wissenID,
+          managerId: user.wissenID,
+          expenseId: id,
+          createdAt: new Date().toISOString(),
+        };
+        // setNotifications([newNotification, ...notifications]);
       }
-      const updatedExpenses = expenses.map(expense =>
-        expense.id === id ? { ...expense, status: 'APPROVED'} : expense
-      );
-      setExpenses(updatedExpenses);
-
-      const newNotification = {
-        message: `Your expense request for ${targetExpense.category}. And amount ${targetExpense.amount} has been approved.`,
-        status: 'APPROVED',
-        userId: targetExpense.user.wissenID,
-        managerId: user.wissenID,
-        expenseId: id,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications([newNotification, ...notifications]);
     } catch (error) {
       console.error('Error approving expense:', error);
     }
   };
+  
 
   const handleReject = async (id, reason) => {
     try {
       const targetExpense = approveRequests.find(expense => expense.id === id);
       let response = await axios.put(`http://localhost:8080/api/expenses/${id}/status/reject?userId=${targetExpense.wissenID}&status=REJECTED&reason=${reason}&rejectedBy=${user.wissenID}`);
-
-      if(response.status == 200){
+  
+      if(response.status === 200){
+        const today = new Date().toLocaleDateString();
         await axios.post(`http://localhost:8080/api/notifications/`, {
-          message: `Your expense request for ${targetExpense.category}. And amount ${targetExpense.amount} has been rejected. Due to ${reason}. By ${user.name}`,
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been rejected. Due to ${reason}. By ${user.name}. On ${today}`,
           status: 'REJECTED',
           userId: targetExpense.user.wissenID,
           managerId: user.wissenID,
           expenseId: id
-      });
+        });
       
-      const updatedExpenses = expenses.map(expense =>
-        expense.id === id ? { ...expense, status: 'REJECTED' } : expense
-      );
-      setExpenses(updatedExpenses);
-
-      const newNotification = {
-        message: `Your expense request for ${targetExpense.category}. And amount ${targetExpense.amount} has been rejected. Due to ${reason}. By ${user.name}`,
-        status: 'REJECTED',
-        userId: targetExpense.user.wissenID,
-        managerId: user.wissenID,
-        expenseId: id,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications([newNotification, ...notifications]);
+        // Update both expenses and approveRequests states
+        setExpenses(expenses.map(expense =>
+          expense.id === id ? { ...expense, status: 'REJECTED' } : expense
+        ));
+        setApproveRequests(approveRequests.map(expense =>
+          expense.id === id ? { ...expense, status: 'REJECTED' } : expense
+        ));
   
-      
-    }
+        // Show reject toast
+        setShowRejectToast(true);
+        setTimeout(() => setShowRejectToast(false), 3000);
+  
+        const newNotification = {
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been rejected. Due to ${reason}. By ${user.name}. On ${today}`,
+          status: 'REJECTED',
+          userId: targetExpense.user.wissenID,
+          managerId: user.wissenID,
+          expenseId: id,
+          createdAt: new Date().toISOString(),
+        };
+        // setNotifications([newNotification, ...notifications]);
+      }
     } catch (error) {
       console.error('Error rejecting expense:', error);
     }
@@ -217,6 +253,7 @@ function Dashboard() {
   
 
   const handleExpenseSubmit = async (formData) => {
+    setIsSubmitting(true);
     try {
         // Upload the receipt file first
         const receiptFormData = new FormData();
@@ -231,20 +268,15 @@ function Dashboard() {
                 },
             }
         );
-        console.log(uploadResponse.data);
         const receiptUrl = uploadResponse.data;
 
-        // Now submit the expense with the receipt URL
         const expenseData = {
             userId: user.wissenID,
             category: formData.category.toUpperCase(),
             amount: parseFloat(formData.amount),
             description: formData.description,
-            receipt: receiptUrl, //! URL Idahr he
+            receipt: receiptUrl,
         };
-        console.log(expenseData);
-        
-
 
         const response = await axios.post(
             `http://localhost:8080/api/expenses/`,
@@ -259,13 +291,15 @@ function Dashboard() {
         const newExpense = response.data;
         setExpenses([newExpense, ...expenses]);
         setShowExpenseForm(false);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
         console.error("Error submitting expense:", error);
+    } finally {
+        setIsSubmitting(false);
     }
 };
 
-
-  
 
   const handleEdit = (id) => {
     const expenseToEdit = expenses.find(expense => expense.id === id);
@@ -286,23 +320,49 @@ function Dashboard() {
       setExpenses(expenses.filter(expense => expense.id !== deletingExpenseId));
       setShowDeleteConfirm(false);
       setDeletingExpenseId(null);
+      // Show delete success toast
+      setShowDeleteToast(true);
+      setTimeout(() => setShowDeleteToast(false), 3000);
     } catch (error) {
       console.error('Error deleting expense:', error);
     }
   };
 
   const handleExpenseUpdate = async (formData) => {
+    setIsSubmitting(true);
     try {
+        let receiptUrl = editingExpense.receipt; // Keep existing receipt by default
+
+        // If a new receipt file is provided, upload it
+        if (formData.receipt && formData.receipt instanceof File) {
+            const receiptFormData = new FormData();
+            receiptFormData.append('file', formData.receipt);
+
+            const uploadResponse = await axios.post(
+                `http://localhost:8080/api/upload/pdf`,
+                receiptFormData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+            receiptUrl = uploadResponse.data;
+        }
+
+        // Create the expense update data
+        const expenseUpdateData = {
+            category: formData.category.toUpperCase(),
+            amount: parseFloat(formData.amount),
+            description: formData.description,
+            receipt: receiptUrl,
+            status: 'PENDING',
+            wissenID: user.wissenID
+        };
+
         const response = await axios.put(
-            `http://localhost:8080/api/expenses/${editingExpense.id}?userId=${user.wissenID}`, // Add userId here
-            { 
-              "expense":{
-                category: formData.category.toUpperCase(),
-                amount: parseFloat(formData.amount),
-                description: formData.description,
-                receipt: 'string',  // Ensure correct handling of receipt
-                status: formData.status || 'PENDING' // Default status if missing
-            }},
+            `http://localhost:8080/api/expenses/${editingExpense.id}?userId=${user.wissenID}`,
+            expenseUpdateData,
             {
                 headers: {
                     'Content-Type': 'application/json'
@@ -316,11 +376,14 @@ function Dashboard() {
         ));
         setEditingExpense(null);
         setShowExpenseForm(false);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
         console.error('Error updating expense:', error);
+    } finally {
+        setIsSubmitting(false);
     }
 };
-
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -339,6 +402,18 @@ function Dashboard() {
     filteredExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
+  const filteredApproveRequests = approveRequests.filter((expense) => {
+    const statusMatch = filters.status ? expense.status === filters.status.toUpperCase() : true;
+    const categoryMatch = filters.category ? expense.category === filters.category.toUpperCase() : true;
+    return statusMatch && categoryMatch;
+  });
+  
+  // Apply date sorting
+  if (filters.dateOrder === 'Old to new') {
+    filteredApproveRequests.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  } else if (filters.dateOrder === 'New to old') {
+    filteredApproveRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
   console.log(user);
   return (
     <div className="flex h-screen bg-gray-100">
@@ -354,12 +429,17 @@ function Dashboard() {
             {activeTab === 'requests' ? 'My Requests' : 'Approve Requests'}
           </h1>
           <div className="flex items-center space-x-4">
-            <NotificationIcon notifications={notifications} onClick={() => setShowAllNotifications(true)} />
-            <UserMenu
-              user={user}
-              onLogout={handleLogout}
-              onViewProfile={() => setShowProfileDialog(true)}
-            />
+          <Tooltip content="Notifications" className="-bottom-8">
+          <NotificationIcon 
+            notifications={notifications} 
+            onClick={() => setShowAllNotifications(true)} 
+          />
+        </Tooltip>
+          <UserMenu
+            user={user}
+            onLogout={handleLogout}
+            onViewProfile={() => setShowProfileDialog(true)}
+          />
           </div>
         </header>
         
@@ -398,13 +478,19 @@ function Dashboard() {
           </div>
         
           <Dialog open={showExpenseForm} onOpenChange={setShowExpenseForm}>
-            <DialogContent>
-              <ExpenseForm
-                onSubmit={editingExpense ? handleExpenseUpdate : handleExpenseSubmit}
-                editingExpense={editingExpense}
-              />
-            </DialogContent>
-          </Dialog>
+          <DialogContent className="pointer-events-auto">
+          <ExpenseForm
+              onSubmit={editingExpense ? handleExpenseUpdate : handleExpenseSubmit}
+              onCancel={() => {
+                  setEditingExpense(null);
+                  setShowExpenseForm(false);
+              }}
+              initialData={editingExpense}
+              showExpenseForm={showExpenseForm}
+              disabled={isSubmitting}
+          />
+          </DialogContent>
+      </Dialog>
         
           <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
             <DialogContent>
@@ -417,12 +503,6 @@ function Dashboard() {
                 </p>
                 <p>
                   <strong>Email:</strong> {user.email}
-                </p>
-                <p>
-                  <strong>Department:</strong> {user.department}
-                </p>
-                <p>
-                  <strong>Position:</strong> {user.position}
                 </p>
                 <p>
                   <strong>Role:</strong> {user.role || 'User'}
@@ -456,41 +536,105 @@ function Dashboard() {
               />
             </DialogContent>
           </Dialog>
+
+          <Toast 
+              message="Expense added successfully!"
+              visible={showToast}
+          />
+          <Toast 
+              message="Expense deleted successfully!"
+              visible={showDeleteToast}
+          />
+
+            <Toast 
+                message="Expense approved successfully!"
+                visible={showApproveToast}
+            />
+            <Toast 
+                message="Expense rejected successfully!"
+                visible={showRejectToast}
+            />
+
+            {isSubmitting && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl">
+                        <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                            <p className="text-gray-700">
+                                {editingExpense ? 'Updating expense...' : 'Adding new expense...'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         
-          {activeTab === 'requests' && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredExpenses.map((expense) => (
-                <ExpenseCard
-                  key={expense.id}
-                  expense={expense}
-                  isApprovalView={false}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          )}
+        {activeTab === 'requests' && (
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {isLoading ? (
+      <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+        <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            <p className="text-gray-500 text-base">Loading expenses...</p>
+          </div>
+        </div>
+      </div>
+    ) : filteredExpenses.length > 0 ? (
+      filteredExpenses.map((expense) => (
+        <ExpenseCard
+          key={expense.id}
+          expense={expense}
+          isApprovalView={false}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      ))
+    ) : (
+      <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+        <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+          <p className="text-gray-500 text-base">No expenses found.</p>
+        </div>
+      </div>
+    )}
+  </div>
+)}
         
-          {activeTab === 'approvals' && user.isManager && (
-            <div className="mt-8">
-              {/* <h2 className="text-2xl font-semibold mb-4">Approve Requests</h2> */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {approveRequests.map((expense) => (
-                  <ExpenseCard
-                    key={expense.id}
-                    expense={expense}
-                    isApprovalView={true}
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
+        {activeTab === 'approvals' && user.isManager && (
+  <div className="mt-8">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {isLoadingApprovals ? (
+        <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+          <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+              <p className="text-gray-500 text-base">Loading approve requests...</p>
             </div>
-          )}
+          </div>
+        </div>
+      ) : filteredApproveRequests.length > 0 ? (
+        filteredApproveRequests.map((expense) => (
+          <ExpenseCard
+            key={expense.id}
+            expense={expense}
+            isApprovalView={true}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ))
+      ) : (
+        <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+          <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+            <p className="text-gray-500 text-base">No expenses found.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
         </main>
       </div>
     </div>

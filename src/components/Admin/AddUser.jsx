@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { Toast } from '../ui/Toast';
 
 export function AddUser({ editingUser, setEditingUser }) {
   const [formData, setFormData] = useState({
@@ -19,20 +20,21 @@ export function AddUser({ editingUser, setEditingUser }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
   // Update form when editing user changes
   useEffect(() => {
+    console.log(editingUser);
     if (editingUser) {
       setFormData({
-        wissenId: editingUser.wissenId || '', // Add Wissen ID field
+        wissenId: editingUser.wissenID || '', // Changed from wissenId to wissenID
         fullName: editingUser.name || '',
         email: editingUser.email || '',
-        joiningDate: editingUser.joiningDate ? new Date(editingUser.joiningDate).toISOString().split('T')[0] : '',
+        joiningDate: editingUser.dateOfJoining ? new Date(editingUser.dateOfJoining).toISOString().split('T')[0] : '', // Changed from joiningDate to dateOfJoining
         role: editingUser.role || '',
         managerId: editingUser.managerId || '',
         isManager: editingUser.isManager ? 'Yes' : 'No',
         reportees: editingUser.reportees ? editingUser.reportees.join(', ') : '',
-        // No password field when editing
       });
     }
   }, [editingUser]);
@@ -49,7 +51,6 @@ export function AddUser({ editingUser, setEditingUser }) {
     setError('');
 
     // Transform form data to API format
-    // console.log(formData.wissenId);
     const userData = {
       wissenID: formData.wissenId, // Add Wissen ID field
       name: formData.fullName,
@@ -60,34 +61,29 @@ export function AddUser({ editingUser, setEditingUser }) {
       isManager: formData.isManager === 'Yes',
       reportees: formData.reportees ? formData.reportees.split(',').map(id => id.trim()) : []
     };
-    // console.log(editingUser);
 
     if (!editingUser) {
       userData.password = formData.password; // Only include password for new users
     }
-    // console.log(userData);
 
     try {
       if (editingUser) {
-        // Update existing user
         await axios.put(`http://localhost:8080/api/users/${formData.wissenId}`, userData);
         setSuccess(true);
-        setError('');
-        // Reset form after 3 seconds
+        setShowToast(true);
         setTimeout(() => {
           setSuccess(false);
+          setShowToast(false);
           setEditingUser(null);
           resetForm();
         }, 3000);
       } else {
-        // Create new user
-        // console.log(userData);
         await axios.post('http://localhost:8080/api/users/', userData);
         setSuccess(true);
-        setError('');
-        // Reset form after 3 seconds
+        setShowToast(true);
         setTimeout(() => {
           setSuccess(false);
+          setShowToast(false);
           resetForm();
         }, 3000);
       }
@@ -114,22 +110,15 @@ export function AddUser({ editingUser, setEditingUser }) {
   };
 
   return (
+    <>
+    <Toast 
+        message={`User ${editingUser ? 'updated' : 'created'} successfully!`}
+        visible={showToast}
+      />
     <Card className="p-6 max-w-2xl mx-auto">
       <h2 className="text-xl font-semibold mb-4">
         {editingUser ? 'Edit User' : 'Add New User'}
       </h2>
-
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          User {editingUser ? 'updated' : 'created'} successfully!
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -208,14 +197,24 @@ export function AddUser({ editingUser, setEditingUser }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Role
           </label>
-          <input
-            type="text"
+          <select
             name="role"
             value={formData.role}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
             required
-          />
+          >
+            <option value="">Select Role</option>
+            <option value="Intern">Intern</option>
+            <option value="Trainee Analyst">Trainee Analyst</option>
+            <option value="Software Developer">Software Developer</option>
+            <option value="Senior Software Developer">Senior Software Developer</option>
+            <option value="Principal Software Developer">Principal Software Developer</option>
+            <option value="Principal Architect">Principal Architect</option>
+            <option value="Associate Director">Associate Director</option>
+            <option value="Executive Director">Executive Director</option>
+            <option value="Managing Partner">Managing Partner</option>
+          </select>
         </div>
 
         <div>
@@ -285,5 +284,6 @@ export function AddUser({ editingUser, setEditingUser }) {
         </div>
       </form>
     </Card>
+    </>
   );
 }

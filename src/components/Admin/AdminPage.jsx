@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Route, Routes, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AddUser } from './AddUser';
 import { SearchUser } from './SearchUser';
 import { Dialog, DialogContent } from '../ui/Dialog';
-import { NotificationIcon } from '../NotificationIcon';
 import { UserMenu } from '../UserMenu';
+import { Plus, Search, Menu } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { Tooltip } from '../ui/Tooltip';
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('addUser');
   const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [showAllNotifications, setShowAllNotifications] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -26,35 +27,77 @@ function AdminDashboard() {
   };
 
   // Custom sidebar for admin
-  const AdminSidebar = ({ activeTab, onTabChange }) => {
+  const AdminSidebar = ({ activeTab, onTabChange, isMinimized, onToggle }) => {
     return (
-      <div className="w-64 bg-gray-900 text-white h-screen flex flex-col">
-        <div className="p-6">
-          <h1 className="text-xl font-bold">ERS Admin</h1>
+      <div className={cn(
+        'bg-gray-900 text-white h-screen transition-all duration-300',
+        isMinimized ? 'w-16' : 'w-64'
+      )}>
+        <div className="flex items-center justify-between p-4">
+          <div className={cn('flex items-center space-x-2', isMinimized && 'hidden')}>
+            <Search className="h-6 w-6" />
+            <span className="text-xl font-bold">ERS Admin</span>
+          </div>
+          <Tooltip content="Toggle Sidebar" className="-right-20">
+            <button
+              onClick={onToggle}
+              className="rounded-lg p-2 hover:bg-gray-800"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </Tooltip>
         </div>
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            <li>
+  
+        <nav className="mt-8 space-y-2 px-2">
+          {isMinimized ? (
+            <Tooltip content="Add User Details" className="-right-20">
               <button
-                className={`w-full text-left px-4 py-2 rounded-md ${
-                  activeTab === 'addUser' ? 'bg-gray-700' : 'hover:bg-gray-800'
-                }`}
+                className={cn(
+                  'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                  activeTab === 'addUser' ? 'bg-gray-800' : 'hover:bg-gray-800'
+                )}
                 onClick={() => onTabChange('addUser')}
               >
-                Add User
+                <Plus className="h-5 w-5" />
               </button>
-            </li>
-            <li>
+            </Tooltip>
+          ) : (
+            <button
+              className={cn(
+                'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
+                activeTab === 'addUser' ? 'bg-gray-800' : 'hover:bg-gray-800'
+              )}
+              onClick={() => onTabChange('addUser')}
+            >
+              <Plus className="h-5 w-5" />
+              <span>Add User</span>
+            </button>
+          )}
+  
+          {isMinimized ? (
+            <Tooltip content="Search Users" className="-right-20">
               <button
-                className={`w-full text-left px-4 py-2 rounded-md ${
-                  activeTab === 'searchUser' ? 'bg-gray-700' : 'hover:bg-gray-800'
-                }`}
+                className={cn(
+                  'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                  activeTab === 'searchUser' ? 'bg-gray-800' : 'hover:bg-gray-800'
+                )}
                 onClick={() => onTabChange('searchUser')}
               >
-                Search User
+                <Search className="h-5 w-5" />
               </button>
-            </li>
-          </ul>
+            </Tooltip>
+          ) : (
+            <button
+              className={cn(
+                'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
+                activeTab === 'searchUser' ? 'bg-gray-800' : 'hover:bg-gray-800'
+              )}
+              onClick={() => onTabChange('searchUser')}
+            >
+              <Search className="h-5 w-5" />
+              <span>Search User</span>
+            </button>
+          )}
         </nav>
       </div>
     );
@@ -65,15 +108,16 @@ function AdminDashboard() {
       <AdminSidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        isMinimized={isSidebarMinimized}
+        onToggle={() => setIsSidebarMinimized(!isSidebarMinimized)}
       />
 
       <div className="flex-1 overflow-hidden">
         <header className="flex items-center justify-between border-b bg-white px-6 py-4">
           <h1 className="text-xl font-semibold">
-            {activeTab === 'addUser' ? 'Add User' : 'Search User'}
+            {activeTab === 'addUser' ? 'Add User Details' : 'Search User'}
           </h1>
           <div className="flex items-center space-x-4">
-            <NotificationIcon notifications={notifications} onClick={() => setShowAllNotifications(true)} />
             <UserMenu
               user={user}
               onLogout={handleLogout}

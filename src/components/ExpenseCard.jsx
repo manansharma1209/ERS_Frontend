@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Check, X, Edit, Trash, Eye, Download } from 'lucide-react';
+import { Check, X, Edit, Trash, Download } from 'lucide-react';
 import { getCategoryIcon } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
+import { Tooltip } from './ui/Tooltip';
 
 export function ExpenseCard({
   expense,
@@ -18,8 +19,10 @@ export function ExpenseCard({
   const [rejectionReason, setRejectionReason] = useState('');
   const [fileType, setFileType] = useState(null);
   const Icon = getCategoryIcon(expense.category);
-
-
+  const handleApprove = () => {
+    onApprove(expense.id);
+    setShowApproveConfirm(false);
+  };
   const handleReject = () => {
     onReject(expense.id, rejectionReason);
     setShowRejectConfirm(false);
@@ -37,7 +40,7 @@ export function ExpenseCard({
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = expense.receipt;
-    link.download = `receipt_${expense.expenseID}.pdf;` // Default name
+    link.download = `receipt_${expense.expenseID}.pdf`; // Default name
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -77,38 +80,44 @@ export function ExpenseCard({
               </Button>
             </>
           )}
-          {!isApprovalView && (
-            <>
-              <Button
-                variant="primary"
-                onClick={() => onEdit?.(expense.id)}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => onDelete?.(expense.id)}
-                className="h-8 w-8 p-0"
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-            </>
-          )}
+          {!isApprovalView && expense.status === 'PENDING' && (
+  <>
+    <Tooltip content="Edit Expense" className="-top-8">
+      <Button
+        variant="primary"
+        onClick={() => onEdit?.(expense.id)}
+        className="h-8 w-8 p-0"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+    </Tooltip>
+    <Tooltip content="Delete Expense" className="-top-8">
+      <Button
+        variant="danger"
+        onClick={() => onDelete?.(expense.id)}
+        className="h-8 w-8 p-0"
+      >
+        <Trash className="h-4 w-4" />
+      </Button>
+    </Tooltip>
+  </>
+)}
         </div>
       </div>
       <p className="mt-4 text-sm text-gray-600">{expense.description}</p>
       <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-        <span>Created: {new Date(expense.dateCreated).toLocaleDateString()}</span>
+        <span>Created: {new Date(expense.createdAt).toLocaleDateString()}</span>
         <div className="flex items-center space-x-2">
           {/* Download Button */}
-          <Button
-            variant="secondary"
-            onClick={handleDownload}
-            className="h-8 w-8 p-0"
-          >
-            <Download className="h-4 w-4" />
-          </Button>
+          <Tooltip content="Download Receipt" className="-top-8">
+  <Button
+    variant="secondary"
+    onClick={handleDownload}
+    className="h-8 w-8 p-0"
+  >
+    <Download className="h-4 w-4" />
+  </Button>
+</Tooltip>
           <span className="rounded-full bg-gray-100 px-3 py-1">
             {expense.status}
           </span>
@@ -117,21 +126,27 @@ export function ExpenseCard({
 
       {/* Approval Dialog */}
       <Dialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogTitle>Confirm Approval</DialogTitle>
-          <div className="mt-4 space-y-4">
-            <p>Are you sure you want to approve this expense request?</p>
-            <div className="flex justify-end space-x-2">
-              <Button variant="secondary" onClick={() => setShowApproveConfirm(false)}>
-                Cancel
-              </Button>
-              <Button variant="success" onClick={() => onApprove(expense.id)}>
-                Approve
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+  <DialogContent className="sm:max-w-[425px]">
+    <DialogTitle>Confirm Approval</DialogTitle>
+    <div className="mt-4 space-y-4">
+      <p>Are you sure you want to approve this expense request?</p>
+      <div className="flex justify-end space-x-2">
+        <Button 
+          variant="secondary" 
+          onClick={() => setShowApproveConfirm(false)}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="success" 
+          onClick={handleApprove}
+        >
+          Approve
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
 
       {/* Rejection Dialog */}
       <Dialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>

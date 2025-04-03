@@ -3,14 +3,25 @@ import axios from 'axios';
 import { Button } from '../ui/Button';
 import { UserCard } from '../UserCard';
 import { Filter } from 'lucide-react';
+import { Toast } from '../ui/Toast';
+import { Dialog, DialogContent, DialogTitle } from '../ui/Dialog';
+
 
 export function SearchUser({ onEditUser }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [filters, setFilters] = useState({ isManager: '', role: '' });
+  const [filters, setFilters] = useState({ 
+    isManager: '', 
+    role: '',
+    status: 'active' // Add default status filter
+  });
   const [loading, setLoading] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+
   const filterButtonRef = useRef(null);
   const filterDropdownRef = useRef(null);
 
@@ -18,6 +29,21 @@ export function SearchUser({ onEditUser }) {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    let result = [...users];
+    
+    // Apply status filter
+    if (filters.status === 'active') {
+      result = result.filter(user => user.active === true);
+    } else if (filters.status === 'inactive') {
+      result = result.filter(user => user.active === false);
+    }
+    
+    // Apply other existing filters...
+    
+    setFilteredUsers(result);
+  }, [users, filters, searchTerm]);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -68,11 +94,18 @@ export function SearchUser({ onEditUser }) {
         (user.name && user.name.toLowerCase().includes(term)) ||
         (user.email && user.email.toLowerCase().includes(term)) ||
         (user.role && user.role.toLowerCase().includes(term)) ||
-        (user.id && user.id.toString().toLowerCase().includes(term)) // Convert user.id to string
+        (user.wissenID && user.wissenID.toString().toLowerCase().includes(term))
       );
     }
     
-    // Apply isManager filter
+    // Apply status filter
+    if (filters.status === 'active') {
+      result = result.filter(user => user.active);
+    } else if (filters.status === 'inactive') {
+      result = result.filter(user => !user.active);
+    }
+    
+    // Apply other filters
     if (filters.isManager) {
       if (filters.isManager === 'Yes') {
         result = result.filter(user => user.isManager === true);
@@ -81,10 +114,10 @@ export function SearchUser({ onEditUser }) {
       }
     }
     
-    // Apply role filter
-    if (filters.role) {
+    if (filters.role && filters.role.trim()) {
+      const roleFilter = filters.role.toLowerCase().trim();
       result = result.filter(user => 
-        user.role && user.role.toLowerCase() === filters.role.toLowerCase()
+        user.role && user.role.toLowerCase().includes(roleFilter)
       );
     }
     
@@ -100,19 +133,38 @@ export function SearchUser({ onEditUser }) {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        console.log('Deleting user with ID:', userId);
-        await axios.delete(`http://localhost:8080/api/users/${userId}`);
-        // Remove the deleted user from state
-        // setUsers(users.filter(user => user.id !== userId));
-        // setFilteredUsers(filteredUsers.filter(user => user.id !== userId));
-        fetchUsers(); // Refetch users to update the list
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user. Please try again.');
-      }
+  const handleDeleteUser = (userId) => {
+    setUserToDelete(userId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleStatusChange = (wissenID, newStatus) => {
+    // Update users state with the correct field name (active instead of isActive)
+    setUsers(prevUsers => {
+      const updatedUsers = prevUsers.map(user => 
+        user.wissenID === wissenID 
+          ? { ...user, active: newStatus }
+          : user
+      );
+      // Force a re-filter after state update
+      applyFiltersAndSearch();
+      return updatedUsers;
+    });
+  };
+  
+  // Add this new function to handle the actual deletion
+  const confirmDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:8080/api/users/${userToDelete}`);
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      fetchUsers();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user. Please try again.');
     }
   };
 
@@ -129,6 +181,32 @@ export function SearchUser({ onEditUser }) {
 
   return (
     <div className="space-y-6">
+        <Toast 
+      message="User deleted successfully!"
+      visible={showToast}
+    />
+    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <div className="mt-4 space-y-4">
+          <p>Are you sure you want to delete this user?</p>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={confirmDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
       <div className="flex items-center justify-between">
         <div className="flex-1 mr-4">
           <input
@@ -148,12 +226,31 @@ export function SearchUser({ onEditUser }) {
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
+                 
           {showFilterDropdown && (
             <div 
               ref={filterDropdownRef}
               className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200 p-4"
             >
               <div className="space-y-4">
+                {/* Add the new status filter first */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={filters.status}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="active">Active Users</option>
+                    <option value="inactive">Inactive Users</option>
+                    <option value="all">All Users</option>
+                  </select>
+                </div>
+          
+                {/* Existing Is Manager filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Is Manager
@@ -169,6 +266,8 @@ export function SearchUser({ onEditUser }) {
                     <option value="No">No</option>
                   </select>
                 </div>
+          
+                {/* Existing Role filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Role
@@ -182,10 +281,12 @@ export function SearchUser({ onEditUser }) {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
                 </div>
+          
+                {/* Update the Clear Filters button to include status */}
                 <Button 
                   variant="secondary" 
                   onClick={() => {
-                    setFilters({ isManager: '', role: '' });
+                    setFilters({ isManager: '', role: '', status: 'active' });
                   }}
                   className="w-full"
                 >
@@ -198,31 +299,38 @@ export function SearchUser({ onEditUser }) {
       </div>
 
       {loading ? (
-        <div className="text-center py-10">Loading users...</div>
-      ) : filteredUsers.length === 0 ? (
-        <div className="text-center py-10">No users found. Try adjusting your search criteria.</div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredUsers.map((user) => {
-  return (
-    <UserCard
-      key={user.wissenID} // Use wissenId as the key
-      user={{
-        id: user.wissenID,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        managerId: user.managerId,
-        joiningDate: user.dateOfJoining,
-        isManager: user.isManager,
-        wissenID: user.wissenID // Ensure wissenId is passed to UserCard
-      }}
-      reportees={user.reportees || []}
-      onEdit={() => onEditUser(user)}
-      onDelete={() => handleDeleteUser(user.wissenID)}
-    />
-  );
-})}
+  <div className="col-span-full flex justify-center items-center h-32">
+    <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+      <p className="text-gray-500 text-base">Loading users...</p>
+    </div>
+  </div>
+) : filteredUsers.length === 0 ? (
+  <div className="col-span-full flex justify-center items-center h-32">
+    <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+      <p className="text-gray-500 text-base">No users found. Try adjusting your search criteria.</p>
+    </div>
+  </div>
+) : (
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {filteredUsers.map((user) => (
+  <UserCard
+    key={user.wissenID}
+    user={{
+      id: user.wissenID,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      managerId: user.managerId,
+      joiningDate: user.dateOfJoining,
+      isManager: user.isManager,
+      isActive: user.active, // Map 'active' from API to 'isActive' for UserCard
+      wissenID: user.wissenID
+    }}
+    reportees={user.reportees || []}
+    onEdit={() => onEditUser(user)}
+    onStatusChange={handleStatusChange}
+  />
+))}
         </div>
       )}
     </div>

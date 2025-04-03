@@ -1,17 +1,44 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UserCircle, Edit, Trash, Users } from 'lucide-react';
+import { UserCircle, Edit, Power, Users } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
+import { Tooltip } from './ui/Tooltip';
 
 export function UserCard({
   user,
   onEdit,
-  onDelete,
+  onStatusChange,
   reportees = []
 }) {
   const [showReportees, setShowReportees] = useState(false);
   const [reporteeDetails, setReporteeDetails] = useState([]);
+  // Add new state for handling status update
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  
+  // Add new function to handle status toggle
+  const handleStatusToggle = () => {
+    setShowStatusConfirm(true);
+  };
+
+  const confirmStatusUpdate = async () => {
+    try {
+      setIsUpdatingStatus(true);
+      const response = await axios.put(`http://localhost:8080/api/users/toggle-status/${user.wissenID}`, {
+        active: !user.isActive
+      });
+      
+      if (response.status === 200) {
+        onStatusChange?.(user.wissenID, !user.isActive);
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+    } finally {
+      setIsUpdatingStatus(false);
+      setShowStatusConfirm(false);
+    }
+  };
 
   const fetchReporteeDetails = async () => {
     try {
@@ -46,20 +73,26 @@ export function UserCard({
           </div>
         </div>
         <div className="flex items-center space-x-2">
+        <Tooltip content="Edit User Details" className="-top-8">
+            <Button
+              variant="primary"
+              onClick={() => onEdit?.(user.id)}
+              className="h-8 w-8 p-0"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+          
+          <Tooltip content={`${user.isActive ? 'Deactivate' : 'Activate'} User`} className="-top-8">
           <Button
-            variant="primary"
-            onClick={() => onEdit?.(user.id)}
+            variant={user.isActive ? "danger" : "success"}
+            onClick={handleStatusToggle}
             className="h-8 w-8 p-0"
+            disabled={isUpdatingStatus}
           >
-            <Edit className="h-4 w-4" />
+            <Power className={`h-4 w-4 ${isUpdatingStatus ? 'animate-pulse' : ''}`} />
           </Button>
-          <Button
-            variant="danger"
-            onClick={() => onDelete?.(user.id)}
-            className="h-8 w-8 p-0"
-          >
-            <Trash className="h-4 w-4" />
-          </Button>
+        </Tooltip>
         </div>
       </div>
       
@@ -87,23 +120,23 @@ export function UserCard({
             {reporteeDetails.length > 0 ? (
               <div className="max-h-60 overflow-y-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th className="text-left pb-2">Name</th>
-                      <th className="text-left pb-2">Wissen ID</th>
-                      <th className="text-left pb-2">Email</th>
+                <thead>
+                  <tr>
+                    <th className="text-center pb-2 px-2">Name</th>
+                    <th className="text-center pb-2 px-2">Wissen ID</th>
+                    <th className="text-center pb-2 px-2">Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reporteeDetails.map((reportee) => (
+                    <tr key={reportee.wissenID}>
+                      <td className="py-1 px-4 text-center">{reportee.name}</td>
+                      <td className="py-1 px-4 text-center">{reportee.wissenID}</td>
+                      <td className="py-1 px-4 text-center">{reportee.email}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {reporteeDetails.map((reportee) => (
-                      <tr key={reportee.wissenID}>
-                        <td className="py-2">{reportee.name}</td>
-                        <td className="py-2">{reportee.wissenID}</td>
-                        <td className="py-2">{reportee.email}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))}
+                </tbody>
+              </table>
               </div>
             ) : (
               <p>No reportees found.</p>
@@ -116,6 +149,42 @@ export function UserCard({
           </div>
         </DialogContent>
       </Dialog>
+
+<Dialog open={showStatusConfirm} onOpenChange={setShowStatusConfirm}>
+  <DialogContent className="sm:max-w-[425px]">
+    <DialogTitle>Confirm Status Change</DialogTitle>
+    <div className="mt-4 space-y-4">
+      <p>
+        Are you sure you want to {user.isActive ? 'deactivate' : 'activate'} this user?
+        {user.isActive ? 
+          ' This will prevent them from accessing the system.' : 
+          ' This will restore their access to the system.'}
+      </p>
+      <div className="flex justify-end space-x-2">
+        <Button 
+          variant="secondary" 
+          onClick={() => setShowStatusConfirm(false)}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant={user.isActive ? "danger" : "success"}
+          onClick={confirmStatusUpdate}
+          disabled={isUpdatingStatus}
+        >
+          {isUpdatingStatus ? (
+            <span className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Processing...
+            </span>
+          ) : (
+            user.isActive ? 'Deactivate' : 'Activate'
+          )}
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }

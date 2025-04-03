@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { User } from 'lucide-react';
+import { Tooltip } from './ui/Tooltip';
 
 export function UserMenu({ user, onLogout, onViewProfile }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,13 +22,15 @@ export function UserMenu({ user, onLogout, onViewProfile }) {
 
   return (
     <div className="relative" ref={menuRef}>
+      <Tooltip content="Profile Menu" className="-bottom-8">
       <button
-        className="flex items-center space-x-2"
+        className="flex items-center space-x-2 rounded-lg p-2 hover:bg-gray-100 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <User className="h-5 w-5" />
         <span>{user.name}</span>
       </button>
+    </Tooltip>
       
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
