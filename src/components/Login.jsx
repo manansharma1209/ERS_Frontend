@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { useApi } from '../contexts/ApiContext';
 import logo from '../assets/logo.png';
 
 export function Login() {
+  const { login } = useAuth();
+  const api = useApi();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,34 +21,25 @@ export function Login() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
+      setIsLoading(true);
       try {
-        const response = await axios.post(
-          "http://localhost:8080/api/users/authenticate",
-          { email, password }
-        );
+        const userData = await api.auth.login({ email, password });
+        login(userData);
         
-        if (response.data) {
-          console.log(response.data);
-          const userData = response.data;
-          localStorage.setItem('user', JSON.stringify(userData));
-          
-          if (userData.role === "ADMIN") {
-            navigate('/admin');
-          } else {
-            navigate('/home');
-          }
+        if (userData.role === "ADMIN") {
+          navigate('/admin');
+        } else {
+          navigate('/home');
         }
       } catch (error) {
         if (error.response) {
           switch (error.response.status) {
             case 403:
-              // Handle inactive account
               setErrors({ 
                 general: error.response.data.message || "Account is inactive. Please contact your administrator." 
               });
               break;
             case 401:
-              // Handle invalid credentials
               setErrors({ 
                 general: error.response.data.message || "Invalid email or password" 
               });
@@ -59,10 +54,11 @@ export function Login() {
             general: "Network error. Please check your connection." 
           });
         }
+      } finally {
+        setIsLoading(false);
       }
     }
   };
-
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 py-4">
@@ -108,16 +104,24 @@ export function Login() {
             />
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
-          {errors.general && <p className="text-red-500 text-sm mt-1">{errors.general}</p>}
+          {errors.general && (
+            <div className="mb-4 p-3 rounded bg-red-50">
+              <p className="text-red-500 text-sm">{errors.general}</p>
+            </div>
+          )}
           <button
             type="submit"
-            className="w-full px-4 py-2 mt-4 text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+            disabled={isLoading}
+            className={`w-full px-4 py-2 mt-4 text-white bg-gray-900 rounded-lg transition-colors duration-200 ${
+              isLoading 
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-gray-800'
+            }`}
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>
     </div>
   );
-
 }
