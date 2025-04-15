@@ -17,6 +17,10 @@ import { Toast } from './Components/ui/Toast';
 
 import { Tooltip } from './components/ui/Tooltip';
 
+const user = JSON.parse(localStorage.getItem('user')); // Parse the stored user object
+const token = user?.token; // Safely access the token property
+console.log(token); // Logs the token
+
 // Authentication check function
 const isAuthenticated = () => {
   return localStorage.getItem('user') !== null;
@@ -86,7 +90,13 @@ const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
     const fetchExpenses = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`http://localhost:8080/api/expenses/user?userId=${user.wissenID}`);
+        const response = await axios.get(`http://localhost:8080/api/expenses/user?userId=${user.wissenID}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         setExpenses(Array.isArray(response.data) ? response.data : []);
         console.log(response.data);
       } catch (error) {
