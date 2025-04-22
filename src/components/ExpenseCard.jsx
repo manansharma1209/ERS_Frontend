@@ -1,176 +1,117 @@
-import { useState, useEffect } from 'react';
-import { Check, X, Edit, Trash, Download } from 'lucide-react';
-import { getCategoryIcon } from '../lib/utils';
-import { Button } from './ui/Button';
-import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
-import { Tooltip } from './ui/Tooltip';
+import { formatDate, formatCurrency, getCategoryIcon } from '../lib/utils';
+import { Button } from '../Components/ui/Button';
+import { Card, CardContent, CardFooter } from '../Components/ui/Card';
+import { Tooltip } from '../Components/ui/Tooltip';
+import { EXPENSE_STATUS } from '../lib/constants';
 
 export function ExpenseCard({
   expense,
-  userName,
-  isApprovalView,
   onApprove,
   onReject,
   onEdit,
   onDelete,
+  isManager
 }) {
-  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [fileType, setFileType] = useState(null);
   const Icon = getCategoryIcon(expense.category);
-  const handleApprove = () => {
-    onApprove(expense.id);
-    setShowApproveConfirm(false);
-  };
-  const handleReject = () => {
-    onReject(expense.id, rejectionReason);
-    setShowRejectConfirm(false);
-    setRejectionReason('');
-  };
-
-  useEffect(() => {
-    if (expense.receipt) {
-      fetch(expense.receipt, { method: "HEAD" })
-        .then((res) => setFileType(res.headers.get("Content-Type")))
-        .catch(() => setFileType(null)); //* Handle errors gracefully
-    }
-  }, [expense.receipt]);
-
-  const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = expense.receipt;
-    link.download = `receipt_${expense.expenseID}.pdf`; // Default name
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const isActionable = expense.status === EXPENSE_STATUS.PENDING && isManager;
+  const statusColors = {
+    [EXPENSE_STATUS.PENDING]: 'bg-yellow-100 text-yellow-800',
+    [EXPENSE_STATUS.APPROVED]: 'bg-green-100 text-green-800',
+    [EXPENSE_STATUS.REJECTED]: 'bg-red-100 text-red-800'
   };
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow-md">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="rounded-full bg-gray-100 p-3">
-            <Icon className="h-6 w-6 text-gray-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">{expense.category}</h3>
-            <p className="text-sm text-gray-500">${expense.amount}</p>
-            {isApprovalView && (
-              <p className="text-sm text-gray-500">Submitted by: {expense.user.name}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          {isApprovalView && expense.status === 'PENDING' && (
-            <>
-              <Button
-                variant="success"
-                onClick={() => setShowApproveConfirm(true)}
-                className="h-8 w-8 p-0"
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => setShowRejectConfirm(true)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-          {!isApprovalView && expense.status === 'PENDING' && (
-  <>
-    <Tooltip content="Edit Expense" className="-top-8">
-      <Button
-        variant="primary"
-        onClick={() => onEdit?.(expense.id)}
-        className="h-8 w-8 p-0"
-      >
-        <Edit className="h-4 w-4" />
-      </Button>
-    </Tooltip>
-    <Tooltip content="Delete Expense" className="-top-8">
-      <Button
-        variant="danger"
-        onClick={() => onDelete?.(expense.id)}
-        className="h-8 w-8 p-0"
-      >
-        <Trash className="h-4 w-4" />
-      </Button>
-    </Tooltip>
-  </>
-)}
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-gray-600">{expense.description}</p>
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-        <span>Created: {new Date(expense.createdAt).toLocaleDateString()}</span>
-        <div className="flex items-center space-x-2">
-          {/* Download Button */}
-          <Tooltip content="Download Receipt" className="-top-8">
-  <Button
-    variant="secondary"
-    onClick={handleDownload}
-    className="h-8 w-8 p-0"
-  >
-    <Download className="h-4 w-4" />
-  </Button>
-</Tooltip>
-          <span className="rounded-full bg-gray-100 px-3 py-1">
-            {expense.status}
-          </span>
-        </div>
-      </div>
-
-      {/* Approval Dialog */}
-      <Dialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
-  <DialogContent className="sm:max-w-[425px]">
-    <DialogTitle>Confirm Approval</DialogTitle>
-    <div className="mt-4 space-y-4">
-      <p>Are you sure you want to approve this expense request?</p>
-      <div className="flex justify-end space-x-2">
-        <Button 
-          variant="secondary" 
-          onClick={() => setShowApproveConfirm(false)}
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="success" 
-          onClick={handleApprove}
-        >
-          Approve
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
-      {/* Rejection Dialog */}
-      <Dialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogTitle>Confirm Rejection</DialogTitle>
-          <div className="mt-4 space-y-4">
-            <p>Are you sure you want to reject this expense request?</p>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Enter rejection reason"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="secondary" onClick={() => setShowRejectConfirm(false)}>
-                Cancel
-              </Button>
-              <Button variant="danger" onClick={handleReject}>
-                Reject
-              </Button>
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Icon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">{expense.description}</h3>
+              <p className="text-sm text-gray-500">{formatDate(expense.date)}</p>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <div className="flex flex-col items-end">
+            <span className="text-lg font-semibold text-gray-900">
+              {formatCurrency(expense.amount)}
+            </span>
+            <span className={`text-sm px-2 py-1 rounded-full ${statusColors[expense.status]}`}>
+              {expense.status}
+            </span>
+          </div>
+        </div>
+
+        {expense.receiptUrl && (
+          <a
+            href={expense.receiptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+          >
+            View Receipt
+          </a>
+        )}
+
+        {expense.rejectionReason && (
+          <div className="mt-4 p-3 bg-red-50 rounded-md">
+            <p className="text-sm text-red-700">
+              <strong>Reason for rejection:</strong> {expense.rejectionReason}
+            </p>
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter className="bg-gray-50 px-6 py-4">
+        <div className="flex justify-end space-x-2 w-full">
+          {isActionable ? (
+            <>
+              <Tooltip content="Approve expense">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => onApprove(expense.id)}
+                >
+                  Approve
+                </Button>
+              </Tooltip>
+              <Tooltip content="Reject expense">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => onReject(expense.id)}
+                >
+                  Reject
+                </Button>
+              </Tooltip>
+            </>
+          ) : (
+            expense.status === EXPENSE_STATUS.PENDING && (
+              <>
+                <Tooltip content="Edit expense">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onEdit(expense)}
+                  >
+                    Edit
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Delete expense">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onDelete(expense.id)}
+                  >
+                    Delete
+                  </Button>
+                </Tooltip>
+              </>
+            )
+          )}
+        </div>
+      </CardFooter>
+    </Card>
   );
 }

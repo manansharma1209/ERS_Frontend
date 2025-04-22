@@ -4,6 +4,7 @@ import { UserCircle, Edit, Power, Users } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
 import { Tooltip } from './ui/Tooltip';
+import { useAuth } from '../context/AuthContext';
 
 export function UserCard({
   user,
@@ -11,13 +12,12 @@ export function UserCard({
   onStatusChange,
   reportees = []
 }) {
+  const { auth } = useAuth();
   const [showReportees, setShowReportees] = useState(false);
   const [reporteeDetails, setReporteeDetails] = useState([]);
-  // Add new state for handling status update
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
   
-  // Add new function to handle status toggle
   const handleStatusToggle = () => {
     setShowStatusConfirm(true);
   };
@@ -27,6 +27,10 @@ export function UserCard({
       setIsUpdatingStatus(true);
       const response = await axios.put(`http://localhost:8080/api/users/toggle-status/${user.wissenID}`, {
         active: !user.isActive
+      }, {
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
       });
       
       if (response.status === 200) {
@@ -42,11 +46,13 @@ export function UserCard({
 
   const fetchReporteeDetails = async () => {
     try {
-      const loggedInUserWissenID = JSON.parse(localStorage.getItem('user')).wissenID;
       const reporteeDetailsPromises = reportees.map(reporteeWissenId =>
         axios.get('http://localhost:8080/api/users/getReporteeInfo', {
           params: {
             reporteeWissenId: reporteeWissenId
+          },
+          headers: {
+            Authorization: `Bearer ${auth.token}`
           }
         })
       );
