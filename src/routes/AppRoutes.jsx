@@ -16,6 +16,9 @@ export function AppRoutes() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={
+          <Navigate to={isAuthenticated() ? (isAdmin() ? "/admin" : "/home") : "/login"} />
+        } />
         <Route path="/login" element={
           <PublicRoute>
             <Login />

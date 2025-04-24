@@ -30,6 +30,7 @@ export function Login() {
           const userData = response.data;
           localStorage.setItem('user', JSON.stringify(userData));
           updateAuth(userData);
+          console.log(userData);
           
           if (userData.role === "ADMIN") {
             navigate('/admin');

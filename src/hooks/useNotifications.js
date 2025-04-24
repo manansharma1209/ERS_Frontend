@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { apiService } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export function useNotifications() {
@@ -11,30 +11,56 @@ export function useNotifications() {
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
-      const data = await api.fetchNotifications(auth.wissenID, auth.token);
-      // Sort notifications by date (newest first)
-      const sortedNotifications = data.sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return dateB - dateA;
-      });
-      setNotifications(sortedNotifications);
+      setError(null);
+      const response = await apiService.fetchNotifications(auth.wissenID);
+      setNotifications(response.data || []);
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err.response?.data?.message || err.message;
+      handleError(err, {
+        category: 'API',
+        context: { action: 'fetchNotifications' }
+      });
+      setError(errorMessage);
       setNotifications([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const addNotification = async (notification) => {
+  const markAsRead = async () => {
     try {
-      const response = await api.createNotification(notification, auth.token);
-      setNotifications(prev => [response.data, ...prev]);
+      await apiService.markNotificationsAsRead(auth.wissenID);
+      setNotifications(prev => prev.map(notification => ({
+        ...notification,
+        read: true
+      })));
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message;
+      handleError(err, {
+        category: 'API',
+        context: { action: 'markNotificationsAsRead' }
+      });
+      showToast({
+        message: errorMessage,
+        type: 'error'
+      });
+    }
+  };
+
+  const createNotification = async (data) => {
+    try {
+      const response = await apiService.createNotification({
+        ...data,
+      });
+      // setNotifications(prev => [response.data, ...prev]);
       return { success: true };
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorMessage = err.response?.data?.message || err.message;
+      handleError(err, {
+        category: 'API',
+        context: { action: 'createNotification', data }
+      });
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -48,7 +74,8 @@ export function useNotifications() {
     notifications,
     isLoading,
     error,
-    addNotification,
-    refreshNotifications: fetchNotifications
+    addNotification: createNotification,
+    refreshNotifications: fetchNotifications,
+    markAsRead
   };
 }

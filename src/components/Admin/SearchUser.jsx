@@ -7,7 +7,7 @@ import { Toast } from '../ui/Toast';
 import { useUsers } from '../../hooks/useUsers';
 
 export function SearchUser({ onEditUser }) {
-  const { users, isLoading, toggleUserStatus } = useUsers();
+  const { users = [], isLoading, toggleUserStatus } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [filters, setFilters] = useState({ 
@@ -63,7 +63,8 @@ export function SearchUser({ onEditUser }) {
   };
 
   // Filter users based on search term and filters
-  const filteredUsers = users.filter(user => {
+  console.log(users);
+  const filteredUsers = Array.isArray(users) ? users.filter(user => {
     // Apply search filter
     const searchMatch = !searchTerm || (
       (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -85,7 +86,7 @@ export function SearchUser({ onEditUser }) {
       (user.role && user.role.toLowerCase().includes(filters.role.toLowerCase()));
 
     return searchMatch && statusMatch && managerMatch && roleMatch;
-  });
+  }) : [];
 
   return (
     <div className="space-y-6">

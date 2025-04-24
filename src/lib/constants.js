@@ -36,8 +36,8 @@ export const ROLE_OPTIONS = [
 ];
 
 export const DATE_ORDER_OPTIONS = [
-  'Old to new',
-  'New to old'
+  'New to old',
+  'Old to new'
 ];
 
 export const TOAST_DURATION = 3000; // 3 seconds

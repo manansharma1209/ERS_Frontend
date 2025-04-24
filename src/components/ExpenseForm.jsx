@@ -26,7 +26,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
         amount: initialData.amount,
         category: initialData.category,
         description: initialData.description,
-        receipt: initialData.receipt || null // Prefill receipt if available
+        receipt: initialData.receipt || null
       });
     } else {
       setFormData({
@@ -47,7 +47,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
           setError('Please upload a PDF, JPEG, or PNG file');
           return;
         }
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        if (file.size > 5 * 1024 * 1024) {
           setError('File size must be less than 5MB');
           return;
         }
@@ -151,18 +151,31 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
         )}
 
         <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="secondary" onClick={onCancel} disabled={disabled}>
-                    Cancel
-                </Button>
-                <Button 
-                    type="submit" 
-                    variant="primary"
-                    disabled={disabled}
-                >
-                    {disabled ? 'Adding...' : initialData ? 'Update Expense' : 'Add Expense'}
-                </Button>
-            </div>
+          <Button variant="secondary" onClick={onCancel} disabled={disabled}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            variant="primary"
+            disabled={disabled}
+          >
+            {disabled ? 'Adding...' : initialData ? 'Update Expense' : 'Add Expense'}
+          </Button>
+        </div>
       </form>
+
+      {disabled && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <p className="text-gray-700">
+                {initialData ? 'Updating expense...' : 'Adding new expense...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="sm:max-w-[425px]">
@@ -170,21 +183,21 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
           <div className="mt-4 space-y-4">
             <p>Are you sure you want to submit this expense request?</p>
             <div className="flex justify-end space-x-2">
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowConfirm(false)}
-              disabled={disabled}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={confirmSubmit}
-              variant="primary"
-              disabled={disabled}
-            >
-              {disabled ? 'Adding...' : 'Confirm'}
-            </Button>
-          </div>
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowConfirm(false)}
+                disabled={disabled}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmSubmit}
+                variant="primary"
+                disabled={disabled}
+              >
+                {disabled ? 'Adding...' : 'Confirm'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

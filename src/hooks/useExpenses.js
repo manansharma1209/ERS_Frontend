@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { apiService } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './useToast';
 import { useError } from './useError';
+import { fetchExpensesForReportee } from '../lib/api';
 
 export function useExpenses() {
-  const { auth } = useAuth();
+  const { user, auth } = useAuth();
   const { showToast } = useToast();
   const { handleError } = useError();
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approveRequests, setApproveRequests] = useState([]);
+  const [isLoadingApprovals, setIsLoadingApprovals] = useState(false);
 
   const fetchExpenses = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await api.fetchExpenses(auth.wissenID, auth.token);
-      setExpenses(Array.isArray(data) ? data : []);
+      const response = await apiService.fetchExpenses(auth.wissenID);
+      setExpenses(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message;
       handleError(err, {
@@ -33,7 +36,8 @@ export function useExpenses() {
 
   const addExpense = async (expenseData) => {
     try {
-      const response = await api.createExpense(expenseData, auth.token);
+      expenseData.userId = auth.wissenID;
+      const response = await apiService.createExpense(expenseData);
       setExpenses(prev => [response.data, ...prev]);
       showToast({
         message: 'Expense added successfully',
@@ -56,7 +60,7 @@ export function useExpenses() {
 
   const updateExpense = async (expenseId, expenseData) => {
     try {
-      const response = await api.updateExpense(expenseId, auth.wissenID, expenseData, auth.token);
+      const response = await apiService.updateExpense(expenseId, auth.wissenID, expenseData);
       setExpenses(prev => 
         prev.map(expense => expense.id === expenseId ? response.data : expense)
       );
@@ -81,7 +85,7 @@ export function useExpenses() {
 
   const deleteExpense = async (expenseId) => {
     try {
-      await api.deleteExpense(expenseId, auth.wissenID, auth.token);
+      await apiService.deleteExpense(expenseId, auth.wissenID);
       setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
       showToast({
         message: 'Expense deleted successfully',
@@ -104,7 +108,7 @@ export function useExpenses() {
 
   const approveExpense = async (expenseId, userId) => {
     try {
-      await api.approveExpense(expenseId, userId, auth.wissenID, auth.token);
+      await apiService.approveExpense(expenseId, userId, auth.wissenID);
       setExpenses(prev => 
         prev.map(expense => 
           expense.id === expenseId ? { ...expense, status: 'APPROVED' } : expense
@@ -131,7 +135,7 @@ export function useExpenses() {
 
   const rejectExpense = async (expenseId, userId, reason) => {
     try {
-      await api.rejectExpense(expenseId, userId, reason, auth.wissenID, auth.token);
+      await apiService.rejectExpense(expenseId, userId, auth.wissenID, { reason });
       setExpenses(prev => 
         prev.map(expense => 
           expense.id === expenseId ? { ...expense, status: 'REJECTED' } : expense
@@ -156,6 +160,24 @@ export function useExpenses() {
     }
   };
 
+  const fetchApproveRequests = async () => {
+    if (user.isManager === 'false' || !user.isManager) return;
+    
+    setIsLoadingApprovals(true);
+    try {
+      const approveRequestsPromises = user.reportees.map(reporteeWissenId =>
+        fetchExpensesForReportee(reporteeWissenId, auth.token)
+      );
+      const responses = await Promise.all(approveRequestsPromises);
+      const approveRequests = responses.flatMap(response => response);
+      setApproveRequests(approveRequests);
+    } catch (error) {
+      console.error('Error fetching approve requests:', error);
+    } finally {
+      setIsLoadingApprovals(false);
+    }
+  };
+
   useEffect(() => {
     if (auth?.wissenID) {
       fetchExpenses();
@@ -164,6 +186,7 @@ export function useExpenses() {
 
   return {
     expenses,
+    setExpenses,
     isLoading,
     error,
     addExpense,
@@ -171,6 +194,9 @@ export function useExpenses() {
     deleteExpense,
     approveExpense,
     rejectExpense,
-    refreshExpenses: fetchExpenses
+    refreshExpenses: fetchExpenses,
+    approveRequests,
+    isLoadingApprovals,
+    fetchApproveRequests
   };
 }

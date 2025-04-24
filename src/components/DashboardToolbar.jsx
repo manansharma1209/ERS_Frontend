@@ -1,6 +1,7 @@
 import { PlusCircle, Filter } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ExpenseFilter } from './ExpenseFilter';
+import { getFirstName } from '../lib/utils';
 
 export function DashboardToolbar({
   activeTab,
@@ -10,11 +11,12 @@ export function DashboardToolbar({
   filters,
   onAddExpense,
   onFilterChange,
-  onToggleFilter
+  onToggleFilter,
+  user
 }) {
   return (
     <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-semibold">Welcome,</h2>
+      <h2 className="text-2xl font-semibold">Welcome {getFirstName(user?.name || 'User')},</h2>
       <div className="flex items-center space-x-4">
         {activeTab === 'requests' && (
           <Button variant="primary" onClick={onAddExpense}>

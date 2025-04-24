@@ -1,23 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import { Sidebar } from './SideBar';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardToolbar } from './DashboardToolbar';
 import { ExpenseList } from './ExpenseList';
+import {ExpenseCard} from './ExpenseCard';
 import { ExpenseForm } from './ExpenseForm';
 import { NotificationList } from './NotificationList';
 import { ProfileDialog } from './ProfileDialog';
 import { Dialog, DialogContent } from './ui/Dialog';
 import { Toast } from './ui/Toast';
-import { LoadingOverlay } from './ui/LoadingOverlay';
 import { useAuth } from '../context/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
 import { useNotifications } from '../hooks/useNotifications';
-import { api } from '../lib/api';
+import { apiService, fetchExpensesForReportee } from '../lib/api';
+import { API_CONFIG } from '../lib/constants';
 
 export function Dashboard() {
   const { auth, updateAuth } = useAuth();
   const { 
     expenses,
+    setExpenses,
     isLoading,
     addExpense,
     updateExpense,
@@ -36,11 +39,15 @@ export function Dashboard() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showAllNotifications, setShowAllNotifications] = useState(false);
-  const [filters, setFilters] = useState({ status: '', dateOrder: '', category: '' });
+  const [filters, setFilters] = useState({ status: '', dateOrder: 'New to old', category: '' });
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [reporteeExpenses, setReporteeExpenses] = useState([]);
+  const [loadingReporteeExpenses, setLoadingReporteeExpenses] = useState(false);
+  const [isApprovingId, setIsApprovingId] = useState(null);
+  const [isRejectingId, setIsRejectingId] = useState(null);
   
   const filterButtonRef = useRef(null);
   const filterDropdownRef = useRef(null);
@@ -60,6 +67,30 @@ export function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Effect to fetch reportee expenses when approvals tab is active
+  useEffect(() => {
+    async function fetchReporteeData() {
+      if (activeTab === 'approvals' && auth?.isManager) {
+        setLoadingReporteeExpenses(true);
+        try {
+          // Fetch expenses for all reportees
+          const allExpenses = [];
+          for (const reporteeId of auth.reportees) {
+            const data = await fetchExpensesForReportee(reporteeId, auth.token);
+            allExpenses.push(...data);
+          }
+          console.log('allExpenses', allExpenses);
+          setReporteeExpenses(allExpenses);
+        } catch (error) {
+          console.error('Error fetching reportee expenses:', error);
+        } finally {
+          setLoadingReporteeExpenses(false);
+        }
+      }
+    }
+    fetchReporteeData();
+  }, [activeTab, auth]);
+
   // Event handlers
   const handleLogout = () => {
     updateAuth(null);
@@ -77,7 +108,17 @@ export function Dashboard() {
       // Upload receipt first
       const receiptFormData = new FormData();
       receiptFormData.append('file', formData.receipt);
-      const uploadResponse = await api.uploadReceipt(formData.receipt, auth.token);
+      
+      const uploadResponse = await axios.post(
+        `${API_CONFIG.BASE_URL}/upload/pdf`,
+        receiptFormData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${auth.token}`,
+          },
+        }
+      );
 
       const expenseData = {
         userId: auth.wissenID,
@@ -103,23 +144,49 @@ export function Dashboard() {
     setIsSubmitting(true);
     try {
       let receiptUrl = editingExpense.receipt;
-
+  
       if (formData.receipt instanceof File) {
-        const uploadResponse = await api.uploadReceipt(formData.receipt, auth.token);
+        const receiptFormData = new FormData();
+        receiptFormData.append('file', formData.receipt);
+        
+        const uploadResponse = await axios.post(
+          `${API_CONFIG.BASE_URL}/upload/pdf`,
+          receiptFormData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${auth.token}`,
+            },
+          }
+        );
         receiptUrl = uploadResponse.data;
       }
-
+  
       const expenseData = {
+        userId: auth.wissenID,
         category: formData.category.toUpperCase(),
         amount: parseFloat(formData.amount),
         description: formData.description,
-        receipt: receiptUrl,
-        status: 'PENDING',
-        wissenID: auth.wissenID
+        receipt: receiptUrl
       };
-
-      const result = await updateExpense(editingExpense.id, expenseData);
-      if (result.success) {
+  
+      const response = await axios.put(
+        `${API_CONFIG.BASE_URL}/expenses/${editingExpense.expenseID}?userId=${auth.wissenID}`,
+        expenseData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${auth.token}`,
+          },
+        }
+      );
+  
+      if (response.data) {
+        // Update the expenses list with the returned expense
+        const updatedExpenses = expenses.map(expense => 
+          expense.expenseID === editingExpense.expenseID ? response.data : expense
+        );
+        setExpenses(updatedExpenses);
         setEditingExpense(null);
         setShowExpenseForm(false);
         showSuccessToast('Expense updated successfully!');
@@ -132,38 +199,100 @@ export function Dashboard() {
   };
 
   const handleApprove = async (id) => {
-    const targetExpense = expenses.find(expense => expense.id === id);
-    const result = await approveExpense(id, targetExpense.wissenID);
-    
-    if (result.success) {
-      const notification = {
-        message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been approved.`,
-        status: 'APPROVED',
-        userId: targetExpense.wissenID,
-        managerId: auth.wissenID,
-        expenseId: id
-      };
-      await addNotification(notification);
-      showSuccessToast('Expense approved successfully!');
+    setIsApprovingId(id);
+    try {
+      const targetExpense = reporteeExpenses.find(expense => expense.expenseID === id);
+      const response = await axios.put(
+        `${API_CONFIG.BASE_URL}/expenses/${id}/status/approve`,
+        null,
+        {
+          params: {
+            userId: targetExpense.wissenID,
+            status: "APPROVED",
+            approvedBy: auth.wissenID,
+          },
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        }
+      );
+      
+      if (response.status === 200) {
+        const today = new Date().toLocaleDateString();
+        
+        const notification = {
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been approved. On ${today}`,
+          status: 'APPROVED',
+          userId: targetExpense.wissenID,
+          managerId: auth.wissenID,
+          expenseId: id
+        };
+        
+        await addNotification(notification);
+  
+        setReporteeExpenses(prevExpenses => 
+          prevExpenses.map(expense =>
+            expense.expenseID === id ? { ...expense, status: 'APPROVED' } : expense
+          )
+        );
+  
+        showSuccessToast('Expense approved successfully!');
+      }
+    } catch (error) {
+      console.error('Error approving expense:', error);
+    } finally {
+      setIsApprovingId(null);
     }
   };
-
+  
   const handleReject = async (id, reason) => {
-    const targetExpense = expenses.find(expense => expense.id === id);
-    const result = await rejectExpense(id, targetExpense.wissenID, reason);
-    
-    if (result.success) {
-      const notification = {
-        message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been rejected. Reason: ${reason}`,
-        status: 'REJECTED',
-        userId: targetExpense.wissenID,
-        managerId: auth.wissenID,
-        expenseId: id
-      };
-      await addNotification(notification);
-      showSuccessToast('Expense rejected successfully!');
+    setIsRejectingId(id);
+    try {
+      const targetExpense = reporteeExpenses.find(expense => expense.expenseID === id);
+      const response = await axios.put(
+        `${API_CONFIG.BASE_URL}/expenses/${id}/status/reject`,
+        null,
+        {
+          params: {
+            userId: targetExpense.wissenID,
+            status: "REJECTED",
+            reason: reason,
+            rejectedBy: auth.wissenID,
+          },
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        }
+      );
+      
+      if (response.status === 200) {
+        const today = new Date().toLocaleDateString();
+        
+        const notification = {
+          message: `Your expense request for ${targetExpense.category} and amount ${targetExpense.amount} has been rejected. Due to ${reason}. By ${auth.name}. On ${today}`,
+          status: 'REJECTED',
+          userId: targetExpense.wissenID,
+          managerId: auth.wissenID,
+          expenseId: id
+        };
+        
+        await addNotification(notification);
+  
+        setReporteeExpenses(prevExpenses => 
+          prevExpenses.map(expense =>
+            expense.expenseID === id ? { ...expense, status: 'REJECTED' } : expense
+          )
+        );
+  
+        showSuccessToast('Expense rejected successfully!');
+      }
+    } catch (error) {
+      console.error('Error rejecting expense:', error);
+    } finally {
+      setIsRejectingId(null);
     }
   };
+  
 
   const handleDelete = async (id) => {
     const result = await deleteExpense(id);
@@ -172,19 +301,21 @@ export function Dashboard() {
     }
   };
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const statusMatch = filters.status ? expense.status === filters.status.toUpperCase() : true;
-    const categoryMatch = filters.category ? expense.category === filters.category.toUpperCase() : true;
-    return statusMatch && categoryMatch;
-  }).sort((a, b) => {
-    if (filters.dateOrder === 'Old to new') {
-      return new Date(a.createdAt) - new Date(b.createdAt);
-    }
-    if (filters.dateOrder === 'New to old') {
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    }
-    return 0;
-  });
+  const filteredExpenses = (activeTab === 'approvals' ? reporteeExpenses : expenses)
+    .filter((expense) => {
+      const statusMatch = filters.status ? expense.status === filters.status.toUpperCase() : true;
+      const categoryMatch = filters.category ? expense.category === filters.category.toUpperCase() : true;
+      return statusMatch && categoryMatch;
+    })
+    .sort((a, b) => {
+      if (filters.dateOrder === 'Old to new') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (filters.dateOrder === 'New to old') {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return 0;
+    });
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -214,6 +345,7 @@ export function Dashboard() {
             onAddExpense={() => setShowExpenseForm(true)}
             onFilterChange={setFilters}
             onToggleFilter={() => setShowFilterDropdown(!showFilterDropdown)}
+            user={auth}
           />
 
           {/* Dialogs */}
@@ -252,25 +384,74 @@ export function Dashboard() {
 
           {/* Loading States */}
           {isSubmitting && (
-            <LoadingOverlay 
-              message={editingExpense ? 'Updating expense...' : 'Adding new expense...'}
-            />
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-xl">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                  <p className="text-gray-700">
+                    {editingExpense ? 'Updating expense...' : 'Adding new expense...'}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Expense Lists */}
-          <ExpenseList
-            expenses={filteredExpenses}
-            isLoading={isLoading}
-            isApprovalView={activeTab === 'approvals'}
+
+          {/* Replace the existing ExpenseList with this code structure */}
+          {console.log(reporteeExpenses, 'reporteeExpenses')}
+{activeTab === 'approvals' && auth.isManager ? (
+  // Approval Requests Section
+  <div className="mt-8">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {loadingReporteeExpenses ? (
+        // Loading State
+        <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+          <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+              <p className="text-gray-500 text-base">Loading approve requests...</p>
+            </div>
+          </div>
+        </div>
+      ) : reporteeExpenses.length > 0 ? (
+        // Approval Request Cards
+        reporteeExpenses.map((expense) => (
+          <ExpenseCard
+            key={expense.expenseID}
+            expense={expense}
+            isApprovalView={true}
             onApprove={handleApprove}
             onReject={handleReject}
-            onEdit={(id) => {
-              const expense = expenses.find(e => e.id === id);
-              setEditingExpense(expense);
-              setShowExpenseForm(true);
-            }}
             onDelete={handleDelete}
+            isApproving={isApprovingId === expense.expenseID}
+            isRejecting={isRejectingId === expense.expenseID}
           />
+        ))
+      ) : (
+        // No Approvals Found State
+        <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+          <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+            <p className="text-gray-500 text-base">No expenses found for approval.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+) : (
+  // Regular Expenses List
+  <ExpenseList
+    expenses={filteredExpenses}
+    isLoading={isLoading}
+    isApprovalView={false}
+    onEdit={(expense) => {
+      setEditingExpense(expense);
+      setShowExpenseForm(true);
+    }}
+    onDelete={handleDelete}
+    user={auth}
+  />
+)}
         </main>
       </div>
     </div>

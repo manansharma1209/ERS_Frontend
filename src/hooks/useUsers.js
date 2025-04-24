@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { apiService } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export function useUsers() {
@@ -11,11 +11,11 @@ export function useUsers() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const data = await api.fetchUsers(auth.token);
-      setUsers(data);
-    } catch (err) {
-      setError(err.message);
-      setUsers([]);
+      const response = await apiService.fetchUsers();
+      setUsers(response.data || []); // Ensure we set an empty array if no data
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setUsers([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -23,8 +23,8 @@ export function useUsers() {
 
   const createUser = async (userData) => {
     try {
-      const response = await api.createUser(userData, auth.token);
-      setUsers(prev => [response.data, ...prev]);
+      const response = await apiService.createUser(userData, auth.token);
+      // setUsers(prev => [response.data, ...prev]);
       return { success: true, data: response.data };
     } catch (err) {
       setError(err.message);
@@ -34,7 +34,7 @@ export function useUsers() {
 
   const updateUser = async (userId, userData) => {
     try {
-      const response = await api.updateUser(userId, userData, auth.token);
+      const response = await apiService.updateUser(userId, userData, auth.token);
       setUsers(prev => prev.map(user => 
         user.wissenID === userId ? response.data : user
       ));
@@ -47,7 +47,7 @@ export function useUsers() {
 
   const toggleUserStatus = async (userId, active) => {
     try {
-      await api.toggleUserStatus(userId, active, auth.token);
+      await apiService.toggleUserStatus(userId, active, auth.token);
       setUsers(prev => prev.map(user => 
         user.wissenID === userId ? { ...user, active } : user
       ));
@@ -60,7 +60,7 @@ export function useUsers() {
 
   const fetchReporteeInfo = async (reporteeWissenId) => {
     try {
-      const response = await api.fetchReporteeInfo(reporteeWissenId, auth.token);
+      const response = await apiService.fetchReporteeInfo(reporteeWissenId, auth.token);
       return { success: true, data: response.data };
     } catch (err) {
       setError(err.message);
