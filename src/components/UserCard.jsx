@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
 import { Tooltip } from './ui/Tooltip';
 import { useAuth } from '../context/AuthContext';
+import { API_CONFIG } from '../lib/constants';
 
 export function UserCard({
   user,
@@ -25,7 +26,7 @@ export function UserCard({
   const confirmStatusUpdate = async () => {
     try {
       setIsUpdatingStatus(true);
-      const response = await axios.put(`http://localhost:8080/api/users/toggle-status/${user.wissenID}`, {
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/users/toggle-status/${user.wissenID}`, {
         active: !user.isActive
       }, {
         headers: {
@@ -47,7 +48,7 @@ export function UserCard({
   const fetchReporteeDetails = async () => {
     try {
       const reporteeDetailsPromises = reportees.map(reporteeWissenId =>
-        axios.get('http://localhost:8080/api/users/getReporteeInfo', {
+        axios.get(`${API_CONFIG.BASE_URL}/api/users/getReporteeInfo`, {
           params: {
             reporteeWissenId: reporteeWissenId
           },

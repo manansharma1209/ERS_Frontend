@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 const CONFIG = {
   development: {
-    apiBaseUrl: 'http://localhost:8080/api',
+    apiBaseUrl: 'http://localhost:8081/api',
     features: {
       fileUpload: true,
       notifications: true,
@@ -28,7 +28,7 @@ const CONFIG = {
     }
   },
   test: {
-    apiBaseUrl: 'http://localhost:8080/api',
+    apiBaseUrl: 'http://localhost:8081/api',
     features: {
       fileUpload: false,
       notifications: false,

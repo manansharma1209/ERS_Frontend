@@ -30,7 +30,6 @@ api.interceptors.request.use(
         return config;
       }
       config.headers.Authorization = `Bearer ${user.token}`;
-      console.log('Token set successfully:', config.headers.Authorization);
     } catch (error) {
       console.error('Error parsing user data:', error);
     }

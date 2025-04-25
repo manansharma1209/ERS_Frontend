@@ -9,8 +9,36 @@ export function ExpenseList({
   onReject,
   onEdit,
   onDelete,
-  user
+  user,
+  filters // Add filters prop
 }) {
+  if (isLoading) {
+    return (
+      <div className="col-span-full flex justify-center items-center h-32 -mt-4">
+        <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            <p className="text-gray-500 text-base">Loading expenses...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (expenses.length === 0) {
+    return (
+      <div className="col-span-full flex justify-center items-center h-32 mt-8">
+        <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
+          <p className="text-gray-500 text-base">
+            {(!filters?.status && !filters?.category) 
+              ? "No pending expenses found" 
+              : "No matching expenses found"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoadingApprovals && isApprovalView) {
     return (
       <div className="col-span-full flex justify-center items-center h-32 -mt-4">

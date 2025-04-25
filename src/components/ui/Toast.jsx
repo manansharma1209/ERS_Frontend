@@ -31,42 +31,37 @@ export function Toast({
   onDismiss 
 }) {
   useEffect(() => {
-    if (visible && duration > 0) {
-      const timer = setTimeout(() => {
-        onDismiss?.();
-      }, duration);
-
+    if (duration && onDismiss) {
+      const timer = setTimeout(onDismiss, duration);
       return () => clearTimeout(timer);
     }
-  }, [visible, duration, onDismiss]);
+  }, [duration, onDismiss]);
 
   if (!visible) return null;
 
   const Icon = ToastIcon[type];
 
   return (
-    <div
+    <div 
       className={cn(
-        'flex items-center justify-between w-full max-w-sm px-4 py-3 rounded-lg shadow-lg border',
+        'w-full rounded-lg shadow-lg border',
         'transform transition-all duration-300 ease-in-out',
-        toastStyles[type],
-        visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+        'animate-in slide-in-from-right-full fade-in',
+        toastStyles[type]
       )}
-      role="alert"
     >
-      <div className="flex items-center space-x-3">
-        {Icon && <Icon className={cn('h-5 w-5', iconStyles[type])} />}
-        <p className="text-sm font-medium">{message}</p>
+      <div className="flex items-center p-4">
+        <Icon className={cn('h-5 w-5 shrink-0', iconStyles[type])} />
+        <p className="ml-3 mr-2 text-sm font-medium flex-grow">{message}</p>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
-      {onDismiss && (
-        <button
-          onClick={onDismiss}
-          className="p-1 rounded-full hover:bg-black/5 transition-colors"
-          aria-label="Close notification"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
     </div>
   );
 }

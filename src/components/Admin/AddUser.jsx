@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { Toast } from '../ui/Toast';
 import { LoadingOverlay } from '../ui/LoadingOverlay';
 import { useUsers } from '../../hooks/useUsers';
+import { Info } from 'lucide-react'; // Make sure to import this icon
 
 const ROLE_OPTIONS = [
   'Intern',
@@ -16,6 +17,61 @@ const ROLE_OPTIONS = [
   'Executive Director',
   'Managing Partner'
 ];
+
+const passwordValidations = {
+  length: (password) => password.length >= 8,
+  lowercase: (password) => /[a-z]/.test(password),
+  uppercase: (password) => /[A-Z]/.test(password),
+  digit: (password) => /\d/.test(password),
+  special: (password) => /[_@$]/.test(password),
+};
+
+function PasswordValidationTooltip({ password }) {
+  const validations = [
+    { 
+      check: passwordValidations.length(password),
+      message: 'Minimum 8 characters'
+    },
+    {
+      check: passwordValidations.lowercase(password),
+      message: 'At least one lowercase letter [a-z]'
+    },
+    {
+      check: passwordValidations.uppercase(password),
+      message: 'At least one uppercase letter [A-Z]'
+    },
+    {
+      check: passwordValidations.digit(password),
+      message: 'At least one number [0-9]'
+    },
+    {
+      check: passwordValidations.special(password),
+      message: 'At least one special character [_@$]'
+    },
+  ];
+
+  return (
+    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+      <div className="group relative">
+        <div className="p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-help">
+          <Info className="h-5 w-5 text-blue-600" />
+        </div>
+        <div className="invisible group-hover:visible absolute left-full ml-2 p-3 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+          <div className="space-y-2.5">
+            {validations.map(({ check, message }, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${check ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className={`text-sm ${check ? 'text-green-700' : 'text-red-700'} font-medium`}>
+                  {message}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AddUser({ editingUser, setEditingUser }) {
   const { createUser, updateUser } = useUsers();
@@ -71,6 +127,18 @@ export function AddUser({ editingUser, setEditingUser }) {
     setLoading(true);
     setError('');
 
+    // Add password validation for new users
+    if (!editingUser) {
+      const isPasswordValid = Object.values(passwordValidations)
+        .every(validation => validation(formData.password));
+      
+      if (!isPasswordValid) {
+        setError('Please ensure the password meets all requirements');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const userData = {
         wissenID: formData.wissenId,
@@ -121,6 +189,9 @@ export function AddUser({ editingUser, setEditingUser }) {
       password: ''
     });
   };
+
+  const today = new Date().toISOString().split('T')[0];
+
 
   return (
     <>
@@ -184,18 +255,25 @@ export function AddUser({ editingUser, setEditingUser }) {
           </div>
 
           {!editingUser && (
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required={!editingUser}
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 pr-10 border ${
+                    formData.password && Object.values(passwordValidations).every(v => v(formData.password))
+                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  } rounded-md transition-colors`}
+                  required={!editingUser}
+                />
+                {!editingUser && <PasswordValidationTooltip password={formData.password} />}
+              </div>
             </div>
           )}
 
@@ -208,6 +286,7 @@ export function AddUser({ editingUser, setEditingUser }) {
               name="joiningDate"
               value={formData.joiningDate}
               onChange={handleChange}
+              max={today} // Add this line to prevent future dates
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
             />

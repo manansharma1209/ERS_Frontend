@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react';
 
 const STATUS_OPTIONS = ['Pending', 'Approved', 'Rejected'];
-const DATE_ORDER_OPTIONS = ['Old to new', 'New to old'];
+const DATE_ORDER_OPTIONS = ['New to old', 'Old to new'];
 const CATEGORY_OPTIONS = ['Travel', 'Electronics', 'Clothes', 'Vehicle', 'Accommodation'];
 
-export function ExpenseFilter({ filters, onFilterChange }) {
-  const [status, setStatus] = useState(filters?.status || '');
-  const [dateOrder, setDateOrder] = useState(filters?.dateOrder || '');
+export function ExpenseFilter({ filters, onFilterChange, activeTab }) {
+  const [status, setStatus] = useState(filters?.status || 'PENDING');
+  const [dateOrder, setDateOrder] = useState(filters?.dateOrder || 'New to old');
   const [category, setCategory] = useState(filters?.category || '');
 
   useEffect(() => {
-    setStatus(filters?.status || '');
-    setDateOrder(filters?.dateOrder || '');
+    setStatus(filters?.status || 'PENDING');
+    setDateOrder(filters?.dateOrder || 'New to old');
     setCategory(filters?.category || '');
-  }, [filters]);
+  }, [filters, activeTab]);
 
   const handleApplyFilters = () => {
     onFilterChange({ status, dateOrder, category });
   };
 
   const handleClearFilters = () => {
-    setStatus('');
-    setDateOrder('');
+    setStatus('PENDING');
+    setDateOrder('New to old');
     setCategory('');
-    onFilterChange({ status: '', dateOrder: '', category: '' });
+    onFilterChange({ status: 'PENDING', dateOrder: 'New to old', category: '' });
   };
 
   return (
@@ -37,9 +37,8 @@ export function ExpenseFilter({ filters, onFilterChange }) {
           onChange={(e) => setStatus(e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          <option value="">All</option>
           {STATUS_OPTIONS.map((option) => (
-            <option key={option} value={option}>
+            <option key={option} value={option.toUpperCase()}>
               {option}
             </option>
           ))}
@@ -53,7 +52,6 @@ export function ExpenseFilter({ filters, onFilterChange }) {
           onChange={(e) => setDateOrder(e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          <option value="">Default</option>
           {DATE_ORDER_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -71,7 +69,7 @@ export function ExpenseFilter({ filters, onFilterChange }) {
         >
           <option value="">All</option>
           {CATEGORY_OPTIONS.map((option) => (
-            <option key={option} value={option}>
+            <option key={option} value={option.toUpperCase()}>
               {option}
             </option>
           ))}

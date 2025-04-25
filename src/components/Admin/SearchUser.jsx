@@ -63,7 +63,6 @@ export function SearchUser({ onEditUser }) {
   };
 
   // Filter users based on search term and filters
-  console.log(users);
   const filteredUsers = Array.isArray(users) ? users.filter(user => {
     // Apply search filter
     const searchMatch = !searchTerm || (

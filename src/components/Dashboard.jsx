@@ -39,7 +39,11 @@ export function Dashboard() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showAllNotifications, setShowAllNotifications] = useState(false);
-  const [filters, setFilters] = useState({ status: '', dateOrder: 'New to old', category: '' });
+  const [filters, setFilters] = useState({ 
+    status: '', // empty means show only PENDING for approvals tab
+    dateOrder: 'New to old', 
+    category: '' 
+  });
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -79,7 +83,6 @@ export function Dashboard() {
             const data = await fetchExpensesForReportee(reporteeId, auth.token);
             allExpenses.push(...data);
           }
-          console.log('allExpenses', allExpenses);
           setReporteeExpenses(allExpenses);
         } catch (error) {
           console.error('Error fetching reportee expenses:', error);
@@ -302,20 +305,34 @@ export function Dashboard() {
   };
 
   const filteredExpenses = (activeTab === 'approvals' ? reporteeExpenses : expenses)
-    .filter((expense) => {
-      const statusMatch = filters.status ? expense.status === filters.status.toUpperCase() : true;
-      const categoryMatch = filters.category ? expense.category === filters.category.toUpperCase() : true;
-      return statusMatch && categoryMatch;
-    })
-    .sort((a, b) => {
-      if (filters.dateOrder === 'Old to new') {
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      }
-      if (filters.dateOrder === 'New to old') {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      }
-      return 0;
-    });
+  .filter((expense) => {
+    // Apply status filter for both tabs
+    const statusMatch = !filters.status 
+      ? expense.status === 'PENDING'  // Show only PENDING by default for both tabs
+      : expense.status === filters.status.toUpperCase();
+    
+    // Apply category filter
+    const categoryMatch = filters.category 
+      ? expense.category === filters.category.toUpperCase() 
+      : true;
+      
+    // Return true only if both status and category match
+    return statusMatch && categoryMatch;
+  })
+  .sort((a, b) => {
+    // For both tabs, always show PENDING first when no status filter is applied
+    if (!filters.status) {
+      if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+      if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
+    }
+  
+    // Then sort by date
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return filters.dateOrder === 'Old to new' 
+      ? dateA - dateB 
+      : dateB - dateA;
+  });
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -398,14 +415,10 @@ export function Dashboard() {
 
           {/* Expense Lists */}
 
-          {/* Replace the existing ExpenseList with this code structure */}
-          {console.log(reporteeExpenses, 'reporteeExpenses')}
-{activeTab === 'approvals' && auth.isManager ? (
-  // Approval Requests Section
+          {activeTab === 'approvals' && auth.isManager ? (
   <div className="mt-8">
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {loadingReporteeExpenses ? (
-        // Loading State
         <div className="col-span-full flex justify-center items-center h-32 -mt-4">
           <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
             <div className="flex items-center justify-center space-x-2">
@@ -414,9 +427,8 @@ export function Dashboard() {
             </div>
           </div>
         </div>
-      ) : reporteeExpenses.length > 0 ? (
-        // Approval Request Cards
-        reporteeExpenses.map((expense) => (
+      ) : filteredExpenses.length > 0 ? (
+        filteredExpenses.map((expense) => (
           <ExpenseCard
             key={expense.expenseID}
             expense={expense}
@@ -429,17 +441,19 @@ export function Dashboard() {
           />
         ))
       ) : (
-        // No Approvals Found State
         <div className="col-span-full flex justify-center items-center h-32 -mt-4">
           <div className="bg-white p-6 rounded-lg shadow-md text-center w-64">
-            <p className="text-gray-500 text-base">No expenses found for approval.</p>
+            <p className="text-gray-500 text-base">
+              {(!filters.status && !filters.category) 
+                ? "No pending expenses found for approval" 
+                : "No matching expenses found"}
+            </p>
           </div>
         </div>
       )}
     </div>
   </div>
 ) : (
-  // Regular Expenses List
   <ExpenseList
     expenses={filteredExpenses}
     isLoading={isLoading}
@@ -450,6 +464,7 @@ export function Dashboard() {
     }}
     onDelete={handleDelete}
     user={auth}
+    filters={filters}
   />
 )}
         </main>

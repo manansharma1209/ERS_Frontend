@@ -21,16 +21,14 @@ export function Login() {
     if (Object.keys(newErrors).length === 0) {
       try {
         const response = await axios.post(
-          "http://localhost:8080/api/users/authenticate",
+          "http://localhost:8081/api/users/authenticate",
           { email, password }
         );
         
         if (response.data) {
-          console.log(response.data);
           const userData = response.data;
           localStorage.setItem('user', JSON.stringify(userData));
           updateAuth(userData);
-          console.log(userData);
           
           if (userData.role === "ADMIN") {
             navigate('/admin');
