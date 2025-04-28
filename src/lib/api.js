@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { errorTracking } from './errorTracking';
 import { API_CONFIG } from './constants';
+import { isTokenExpired } from './utils';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
@@ -19,16 +20,22 @@ api.interceptors.request.use(
     
     const userStr = localStorage.getItem('user');
     if (!userStr) {
-      console.warn('No user found in localStorage');
       return config;
     }
 
     try {
       const user = JSON.parse(userStr);
       if (!user?.token) {
-        console.warn('No token found in user data');
         return config;
       }
+
+      // Check token expiration before making request
+      if (isTokenExpired(user.token)) {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Token expired'));
+      }
+
       config.headers.Authorization = `Bearer ${user.token}`;
     } catch (error) {
       console.error('Error parsing user data:', error);
@@ -49,7 +56,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || 
+        (error.response?.data?.message || '').toLowerCase().includes('token expired')) {
+      // Clear auth data and redirect to login
       localStorage.removeItem('user');
       window.location.href = '/login';
     }

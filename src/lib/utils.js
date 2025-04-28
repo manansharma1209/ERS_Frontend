@@ -128,3 +128,28 @@ export function getFirstName(name) {
   if (!name) return '';
   return name.split(' ')[0];
 }
+
+export function isTokenExpired(token) {
+  if (!token) return true;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const expiryTime = payload.exp * 1000; // Convert to milliseconds
+    return Date.now() >= expiryTime;
+  } catch (error) {
+    console.error('Error parsing token:', error);
+    return true;
+  }
+}
+
+export function getTokenExpirationTime(token) {
+  if (!token) return null;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000; // Convert to milliseconds
+  } catch (error) {
+    console.error('Error parsing token:', error);
+    return null;
+  }
+}
