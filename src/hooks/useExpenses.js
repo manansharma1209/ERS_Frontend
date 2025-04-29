@@ -86,7 +86,7 @@ export function useExpenses() {
   const deleteExpense = async (expenseId) => {
     try {
       await apiService.deleteExpense(expenseId, auth.wissenID);
-      setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+      setExpenses(prev => prev.filter(expense => expense.expenseID !== expenseId));
       showToast({
         message: 'Expense deleted successfully',
         type: 'success'

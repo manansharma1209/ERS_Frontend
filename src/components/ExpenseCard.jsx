@@ -59,7 +59,7 @@ export function ExpenseCard({
           </div>
           <div>
             <h3 className="text-lg font-medium">{expense.category}</h3>
-            <p className="text-sm text-gray-500">${expense.amount}</p>
+            <p className="text-sm text-gray-500">₹{expense.amount}</p>
             {isApprovalView && (
               <p className="text-sm text-gray-500">Submitted by: {expense.user.name}</p>
             )}
@@ -99,7 +99,7 @@ export function ExpenseCard({
               <Tooltip content="Edit Expense" className="-top-8">
                 <Button
                   variant="primary"
-                  onClick={() => onEdit?.(expense.id)}
+                  onClick={() => onEdit?.(expense)}
                   className="h-8 w-8 p-0"
                 >
                   <Edit className="h-4 w-4" />
@@ -108,7 +108,7 @@ export function ExpenseCard({
               <Tooltip content="Delete Expense" className="-top-8">
                 <Button
                   variant="danger"
-                  onClick={() => onDelete?.(expense.id)}
+                  onClick={() => onDelete?.(expense)}
                   className="h-8 w-8 p-0"
                 >
                   <Trash className="h-4 w-4" />

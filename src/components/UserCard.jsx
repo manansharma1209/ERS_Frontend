@@ -48,7 +48,7 @@ export function UserCard({
   const fetchReporteeDetails = async () => {
     try {
       const reporteeDetailsPromises = reportees.map(reporteeWissenId =>
-        axios.get(`${API_CONFIG.BASE_URL}/api/users/getReporteeInfo`, {
+        axios.get(`${API_CONFIG.BASE_URL}/users/getReporteeInfo`, {
           params: {
             reporteeWissenId: reporteeWissenId
           },

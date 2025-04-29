@@ -8,7 +8,8 @@ import {ExpenseCard} from './ExpenseCard';
 import { ExpenseForm } from './ExpenseForm';
 import { NotificationList } from './NotificationList';
 import { ProfileDialog } from './ProfileDialog';
-import { Dialog, DialogContent } from './ui/Dialog';
+import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
+import { Button } from './ui/Button';
 import { Toast } from './ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useExpenses } from '../hooks/useExpenses';
@@ -52,6 +53,9 @@ export function Dashboard() {
   const [loadingReporteeExpenses, setLoadingReporteeExpenses] = useState(false);
   const [isApprovingId, setIsApprovingId] = useState(null);
   const [isRejectingId, setIsRejectingId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+  const [isDeletingExpense, setIsDeletingExpense] = useState(false);
   
   const filterButtonRef = useRef(null);
   const filterDropdownRef = useRef(null);
@@ -297,10 +301,26 @@ export function Dashboard() {
   };
   
 
-  const handleDelete = async (id) => {
-    const result = await deleteExpense(id);
-    if (result.success) {
-      showSuccessToast('Expense deleted successfully!');
+  const handleDelete = async (expense) => {
+    setExpenseToDelete(expense);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!expenseToDelete) return;
+    
+    setIsDeletingExpense(true);
+    try {
+      const result = await deleteExpense(expenseToDelete.expenseID);
+      if (result.success) {
+        showSuccessToast('Expense deleted successfully!');
+        setShowDeleteConfirm(false);
+        setExpenseToDelete(null);
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    } finally {
+      setIsDeletingExpense(false);
     }
   };
 
@@ -393,6 +413,43 @@ export function Dashboard() {
                 notifications={notifications}
                 onClose={() => setShowAllNotifications(false)}
               />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <DialogContent>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete this expense? This action cannot be undone.
+                </p>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setExpenseToDelete(null);
+                  }}
+                  disabled={isDeletingExpense}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white"
+                  onClick={confirmDelete}
+                  disabled={isDeletingExpense}
+                >
+                  {isDeletingExpense ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Deleting...</span>
+                    </div>
+                  ) : (
+                    'Delete'
+                  )}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
 

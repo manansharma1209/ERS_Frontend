@@ -13,7 +13,11 @@ export function useNotifications() {
       setIsLoading(true);
       setError(null);
       const response = await apiService.fetchNotifications(auth.wissenID);
-      setNotifications(response.data || []);
+      // Sort notifications by date in descending order (newest first)
+      const sortedNotifications = (response.data || []).sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setNotifications(sortedNotifications);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message;
       handleError(err, {

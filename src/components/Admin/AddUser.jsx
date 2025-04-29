@@ -26,7 +26,7 @@ const passwordValidations = {
   special: (password) => /[_@$]/.test(password),
 };
 
-function PasswordValidationTooltip({ password }) {
+function PasswordValidationTooltip({ password, visible, onToggle }) {
   const validations = [
     { 
       check: passwordValidations.length(password),
@@ -50,24 +50,19 @@ function PasswordValidationTooltip({ password }) {
     },
   ];
 
+  if (!visible) return null;
+
   return (
-    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-      <div className="group relative">
-        <div className="p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-help">
-          <Info className="h-5 w-5 text-blue-600" />
-        </div>
-        <div className="invisible group-hover:visible absolute left-full ml-2 p-3 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-          <div className="space-y-2.5">
-            {validations.map(({ check, message }, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${check ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className={`text-sm ${check ? 'text-green-700' : 'text-red-700'} font-medium`}>
-                  {message}
-                </span>
-              </div>
-            ))}
+    <div className="absolute left-full ml-2 top-0 w-64 p-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+      <div className="space-y-1.5">
+        {validations.map(({ check, message }, index) => (
+          <div key={index} className="flex items-center gap-1.5">
+            <div className={`h-2 w-2 flex-shrink-0 rounded-full ${check ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className={`text-xs ${check ? 'text-green-700' : 'text-red-700'} font-medium`}>
+              {message}
+            </span>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -82,11 +77,12 @@ export function AddUser({ editingUser, setEditingUser }) {
     joiningDate: '',
     role: '',
     managerId: '',
-    isManager: 'No',
+    isManager: 'No', // Default set to 'No'
     reportees: '',
     password: ''
   });
 
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -134,6 +130,7 @@ export function AddUser({ editingUser, setEditingUser }) {
       
       if (!isPasswordValid) {
         setError('Please ensure the password meets all requirements');
+        setShowPasswordRequirements(true); // Show requirements on validation error
         setLoading(false);
         return;
       }
@@ -170,7 +167,9 @@ export function AddUser({ editingUser, setEditingUser }) {
       }
     } catch (error) {
       console.error('Error saving user:', error);
-      setError(error.message || 'An error occurred while saving the user.');
+      // Extract the specific error message from the response
+      const errorMessage = error.response?.data?.error || error.message || 'An error occurred while saving the user.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -221,8 +220,11 @@ export function AddUser({ editingUser, setEditingUser }) {
               name="wissenId"
               value={formData.wissenId}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                editingUser ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               required
+              disabled={!!editingUser}
             />
           </div>
 
@@ -259,20 +261,38 @@ export function AddUser({ editingUser, setEditingUser }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 pr-10 border ${
-                    formData.password && Object.values(passwordValidations).every(v => v(formData.password))
-                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-                  } rounded-md transition-colors`}
-                  required={!editingUser}
-                />
-                {!editingUser && <PasswordValidationTooltip password={formData.password} />}
+              <div className="relative flex items-start">
+                <div className="flex-grow relative">
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 pr-10 border ${
+                      formData.password && Object.values(passwordValidations).every(v => v(formData.password))
+                        ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    } rounded-md transition-colors`}
+                    required={!editingUser}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordRequirements(!showPasswordRequirements)}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100 transition-colors ${
+                      showPasswordRequirements ? 'bg-gray-100' : ''
+                    }`}
+                    aria-label="Toggle password requirements"
+                  >
+                    <Info className={`h-5 w-5 ${showPasswordRequirements ? 'text-blue-700' : 'text-blue-600'}`} />
+                  </button>
+                </div>
+                {!editingUser && (
+                  <PasswordValidationTooltip 
+                    password={formData.password} 
+                    visible={showPasswordRequirements}
+                    onToggle={() => setShowPasswordRequirements(!showPasswordRequirements)}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -337,8 +357,8 @@ export function AddUser({ editingUser, setEditingUser }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               required
             >
-              <option value="Yes">Yes</option>
               <option value="No">No</option>
+              <option value="Yes">Yes</option>
             </select>
           </div>
 
@@ -350,10 +370,18 @@ export function AddUser({ editingUser, setEditingUser }) {
               name="reportees"
               value={formData.reportees}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                formData.isManager === 'No' ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               placeholder="e.g. WCS001, WCS002, WCS003"
               rows="3"
+              disabled={formData.isManager === 'No'}
             />
+            {formData.isManager === 'No' && (
+              <p className="text-sm text-gray-500 mt-1">
+                Enable 'Is Manager' to add reportees
+              </p>
+            )}
           </div>
 
           {error && (

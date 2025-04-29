@@ -6,6 +6,9 @@ import { Tooltip } from './ui/Tooltip';
 export function Sidebar({ isManager, activeTab, onTabChange }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Convert isManager to boolean to handle both string and boolean values
+  const showApprovalTab = isManager === true || isManager === 'true';
+
   return (
     <div
       className={cn(
@@ -30,55 +33,59 @@ export function Sidebar({ isManager, activeTab, onTabChange }) {
 
       <nav className="mt-8 space-y-2 px-2">
         {isCollapsed ? (
-          <Tooltip content="My Requests" className="-right-20">
+          <>
+            <Tooltip content="My Requests" className="-right-20">
+              <button
+                onClick={() => onTabChange('requests')}
+                className={cn(
+                  'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                  activeTab === 'requests' ? 'bg-gray-800' : 'hover:bg-gray-800'
+                )}
+              >
+                <PenSquare className="h-5 w-5" />
+              </button>
+            </Tooltip>
+            
+            {showApprovalTab && (
+              <Tooltip content="Approve Requests" className="-right-20">
+                <button
+                  onClick={() => onTabChange('approvals')}
+                  className={cn(
+                    'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                    activeTab === 'approvals' ? 'bg-gray-800' : 'hover:bg-gray-800'
+                  )}
+                >
+                  <ClipboardCheck className="h-5 w-5" />
+                </button>
+              </Tooltip>
+            )}
+          </>
+        ) : (
+          <>
             <button
               onClick={() => onTabChange('requests')}
               className={cn(
-                'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
                 activeTab === 'requests' ? 'bg-gray-800' : 'hover:bg-gray-800'
               )}
             >
               <PenSquare className="h-5 w-5" />
+              <span>My Requests</span>
             </button>
-          </Tooltip>
-        ) : (
-          <button
-            onClick={() => onTabChange('requests')}
-            className={cn(
-              'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
-              activeTab === 'requests' ? 'bg-gray-800' : 'hover:bg-gray-800'
-            )}
-          >
-            <PenSquare className="h-5 w-5" />
-            <span>My Requests</span>
-          </button>
-        )}
 
-        {isManager && (
-          isCollapsed ? (
-            <Tooltip content="Approve Requests" className="-right-20">
+            {showApprovalTab && (
               <button
                 onClick={() => onTabChange('approvals')}
                 className={cn(
-                  'flex w-full items-center justify-center rounded-lg p-3 transition-colors',
+                  'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
                   activeTab === 'approvals' ? 'bg-gray-800' : 'hover:bg-gray-800'
                 )}
               >
                 <ClipboardCheck className="h-5 w-5" />
+                <span>Approve Requests</span>
               </button>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={() => onTabChange('approvals')}
-              className={cn(
-                'flex w-full items-center space-x-2 rounded-lg p-3 transition-colors',
-                activeTab === 'approvals' ? 'bg-gray-800' : 'hover:bg-gray-800'
-              )}
-            >
-              <ClipboardCheck className="h-5 w-5" />
-              <span>Approve Requests</span>
-            </button>
-          )
+            )}
+          </>
         )}
       </nav>
     </div>
