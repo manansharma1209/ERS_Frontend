@@ -19,6 +19,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
   });
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [isFileSizeValid, setIsFileSizeValid] = useState(true);
 
   useEffect(() => {
     if (initialData) {
@@ -45,13 +46,18 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
       if (file) {
         if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
           setError('Please upload a PDF, JPEG, or PNG file');
+          setIsFileSizeValid(true); // Reset file size validation
+          setFormData(prev => ({ ...prev, receipt: null }));
           return;
         }
         if (file.size > 5 * 1024 * 1024) {
           setError('File size must be less than 5MB');
+          setIsFileSizeValid(false);
+          setFormData(prev => ({ ...prev, receipt: null }));
           return;
         }
         setError('');
+        setIsFileSizeValid(true);
         setFormData(prev => ({ ...prev, receipt: file }));
       }
     } else {
@@ -157,9 +163,11 @@ export function ExpenseForm({ onSubmit, onCancel, initialData, showExpenseForm, 
           <Button 
             type="submit" 
             variant="primary"
-            disabled={disabled}
+            disabled={disabled || !isFileSizeValid}
           >
-            {disabled ? 'Adding...' : initialData ? 'Update Expense' : 'Add Expense'}
+            {disabled ? 'Adding...' : 
+             !isFileSizeValid ? 'File Too Large' : 
+             initialData ? 'Update Expense' : 'Add Expense'}
           </Button>
         </div>
       </form>

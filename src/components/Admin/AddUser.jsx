@@ -88,6 +88,7 @@ export function AddUser({ editingUser, setEditingUser }) {
   const [error, setError] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     if (editingUser) {
@@ -122,6 +123,7 @@ export function AddUser({ editingUser, setEditingUser }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
 
     // Add password validation for new users
     if (!editingUser) {
@@ -163,15 +165,41 @@ export function AddUser({ editingUser, setEditingUser }) {
         }
         resetForm();
       } else {
-        setError(result.error || 'An error occurred');
+        handleValidationError(result.error);
       }
     } catch (error) {
-      console.error('Error saving user:', error);
-      // Extract the specific error message from the response
-      const errorMessage = error.response?.data?.error || error.message || 'An error occurred while saving the user.';
-      setError(errorMessage);
+      handleValidationError(error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleValidationError = (errorMessage) => {
+    if (typeof errorMessage !== 'string') {
+      setError('An unexpected error occurred');
+      return;
+    }
+
+    // Clear previous errors
+    setFieldErrors({});
+
+    if (errorMessage.includes('WissenID') && errorMessage.includes('already exists')) {
+      setFieldErrors(prev => ({ ...prev, wissenId: 'This Wissen ID is already in use' }));
+    }
+    else if (errorMessage.includes('Email') && errorMessage.includes('already exists')) {
+      setFieldErrors(prev => ({ ...prev, email: 'This email is already in use' }));
+    }
+    else if (errorMessage.includes('Manager with ID') && errorMessage.includes('does not exist')) {
+      setFieldErrors(prev => ({ ...prev, managerId: 'This manager ID does not exist' }));
+    }
+    else if (errorMessage.includes('reportee IDs do not exist')) {
+      setFieldErrors(prev => ({ ...prev, reportees: 'One or more reportee IDs do not exist' }));
+    }
+    else if (errorMessage.includes('User not found')) {
+      setError('User not found. They may have been deleted.');
+    }
+    else {
+      setError('Enter unique info for all fields.');
     }
   };
 
@@ -187,6 +215,8 @@ export function AddUser({ editingUser, setEditingUser }) {
       reportees: '',
       password: ''
     });
+    setError('');
+    setFieldErrors({});
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -222,10 +252,13 @@ export function AddUser({ editingUser, setEditingUser }) {
               onChange={handleChange}
               className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
                 editingUser ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              } ${fieldErrors.wissenId ? 'border-red-500' : 'border-gray-300'}`}
               required
               disabled={!!editingUser}
             />
+            {fieldErrors.wissenId && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors.wissenId}</p>
+            )}
           </div>
 
           <div>
@@ -251,9 +284,14 @@ export function AddUser({ editingUser, setEditingUser }) {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                fieldErrors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
               required
             />
+            {fieldErrors.email && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors.email}</p>
+            )}
           </div>
 
           {!editingUser && (
@@ -341,9 +379,14 @@ export function AddUser({ editingUser, setEditingUser }) {
               name="managerId"
               value={formData.managerId}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                fieldErrors.managerId ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="Leave blank if no manager"
             />
+            {fieldErrors.managerId && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors.managerId}</p>
+            )}
           </div>
 
           <div>
@@ -372,11 +415,14 @@ export function AddUser({ editingUser, setEditingUser }) {
               onChange={handleChange}
               className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
                 formData.isManager === 'No' ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              } ${fieldErrors.reportees ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="e.g. WCS001, WCS002, WCS003"
               rows="3"
               disabled={formData.isManager === 'No'}
             />
+            {fieldErrors.reportees && (
+              <p className="text-sm text-red-600 mt-1">{fieldErrors.reportees}</p>
+            )}
             {formData.isManager === 'No' && (
               <p className="text-sm text-gray-500 mt-1">
                 Enable 'Is Manager' to add reportees

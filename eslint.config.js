@@ -8,10 +8,15 @@ export default tseslint.config(
   { ignores: ['dist'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true
+        }
+      }
     },
     plugins: {
       'react-hooks': reactHooks,
@@ -23,6 +28,19 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      '@typescript-eslint/consistent-type-imports': 'off',
+      'import/no-unresolved': 'off',
+      'import/case-sensitivity': 'off',
+      '@typescript-eslint/no-case-sensitivity': 'off',
+      'filenames/match-regex': 'off',
+      'filenames/match-exported': 'off'
     },
+    settings: {
+      'import/resolver': {
+        node: {
+          caseSensitive: false
+        }
+      }
+    }
   }
 );

@@ -42,25 +42,27 @@ export function Toast({
   const Icon = ToastIcon[type];
 
   return (
-    <div 
-      className={cn(
-        'w-full rounded-lg shadow-lg border',
-        'transform transition-all duration-300 ease-in-out',
-        'animate-in slide-in-from-right-full fade-in',
-        toastStyles[type]
-      )}
-    >
-      <div className="flex items-center p-4">
-        <Icon className={cn('h-5 w-5 shrink-0', iconStyles[type])} />
-        <p className="ml-3 mr-2 text-sm font-medium flex-grow">{message}</p>
-        {onDismiss && (
-          <button
-            onClick={onDismiss}
-            className="shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <div className="fixed top-4 right-4 z-50">
+      <div 
+        className={cn(
+          'max-w-sm rounded-lg shadow-lg border',
+          'transform transition-all duration-300 ease-in-out',
+          'animate-in slide-in-from-right-full fade-in',
+          toastStyles[type]
         )}
+      >
+        <div className="flex items-center p-3">
+          <Icon className={cn('h-5 w-5 shrink-0', iconStyles[type])} />
+          <p className="ml-2 mr-2 text-sm font-medium flex-grow">{message}</p>
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              className="shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -6,15 +6,15 @@ import { AppRoutes } from './routes/AppRoutes';
 import { ErrorBoundary } from './Components/ErrorBoundary';
 
 function App() {
-  // useEffect(() => {
-  //   // Disable right-click and developer tools
-  //   document.addEventListener('contextmenu', disableRightClick);
-  //   disableDevTools();
+  useEffect(() => {
+    // Disable right-click and developer tools
+    document.addEventListener('contextmenu', disableRightClick);
+    disableDevTools();
 
-  //   return () => {
-  //     document.removeEventListener('contextmenu', disableRightClick);
-  //   };
-  // }, []);
+    return () => {
+      document.removeEventListener('contextmenu', disableRightClick);
+    };
+  }, []);
 
   return (
     <ErrorBoundary>

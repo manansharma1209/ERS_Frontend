@@ -27,8 +27,8 @@ export function useUsers() {
       // setUsers(prev => [response.data, ...prev]);
       return { success: true, data: response.data };
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      setError(err.response.data.message);
+      return { success: false, error: err.response.data.message };
     }
   };
 

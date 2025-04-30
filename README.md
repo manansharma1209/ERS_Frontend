@@ -1,137 +1,186 @@
-# Expense Reimbursement System (ERS) Frontend
+# 🏢 Expense Reimbursement System (ERS) Frontend
 
-A modern, responsive web application built with React for managing employee expense reimbursements. This system allows employees to submit expense requests and managers to process them efficiently.
+<div align="center">
 
-## Features
+![ERS Logo](./src/assets/logo.png)
 
-### User Authentication
-- Secure login system with email and password
+A modern, responsive web application built with React for managing employee expense reimbursements.
+Streamline your organization's expense management with our intuitive interface.
+
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC.svg)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF.svg)](https://vitejs.dev/)
+
+</div>
+
+## ✨ Features
+
+### 🔐 Authentication & Authorization
+- Secure JWT-based authentication system
 - Role-based access control (Admin/Manager/Employee)
-- Automatic redirect based on user role
-- Session persistence
+- Session persistence with local storage
+- Protected routes with role verification
+- Automatic token refresh mechanism
 
-### Employee Features
-- Submit new expense requests with receipts
-- View all submitted expenses with status
-- Filter expenses by status, category, and date
-- Edit pending expense requests
-- Delete pending expense requests
-- Real-time status updates
-- Download expense receipts
+### 👤 Employee Dashboard
+- **Expense Management**
+  - Submit new expense requests with receipt uploads
+  - PDF/JPEG/PNG receipt support with 5MB size limit
+  - Real-time form validation
+  - Edit pending expense requests
+  - Delete pending requests
+  
+- **Request Tracking**
+  - View all submitted expenses with status indicators
+  - Advanced filtering by:
+    - Status (Pending/Approved/Rejected)
+    - Category (Travel/Electronics/Clothes/Vehicle/Accommodation)
+    - Date range
+  - Sort expenses by date (newest/oldest)
+  - Download expense receipts
 
-### Manager Features
-- View expense requests from reportees
-- Approve/Reject expenses with comments
-- Filter reportee expenses by status and category
-- Detailed view of expense information
-- Manage team members
+### 👨‍💼 Manager Features
+- **Expense Approval Workflow**
+  - Dedicated approvals dashboard
+  - View all reportee expense requests
+  - Approve/Reject with comments
+  - Bulk status updates
+  
+- **Team Management**
+  - View team hierarchy
+  - Monitor team expense patterns
+  - Access reportee details
 
-### Admin Features
-- Add new users to the system
-- Edit existing user details
-- Search and filter users
-- Activate/Deactivate user accounts
-- Manage user roles and permissions
-- View user hierarchies
+### 👑 Admin Portal
+- **User Management**
+  - Create new user accounts
+  - Update existing user details
+  - Manage roles and permissions
+  - Set manager-reportee relationships
+  
+- **Advanced Search**
+  - Search users by name/email/ID
+  - Filter by:
+    - Active/Inactive status
+    - Role
+    - Manager status
+  - View user hierarchies
 
-### Notification System
-- Real-time notifications for expense status changes
+### 🔔 Real-time Notifications
+- Instant status update notifications
+- Clickable notifications with context
 - Notification history with pagination
-- Clear visual indicators for new notifications
+- Unread notification indicators
 
-## Technical Stack
+## 🛠️ Technical Implementation
 
-- **Frontend Framework**: React
-- **Styling**: Tailwind CSS
-- **State Management**: React Context API
-- **Routing**: React Router v6
-- **UI Components**: Custom components with Radix UI primitives
-- **HTTP Client**: Axios
-- **Build Tool**: Vite
-- **Icons**: Lucide React
+### Frontend Architecture
+- **State Management**: React Context API for global state
+  - Authentication context
+  - Notification context
+  - Toast notifications
+  
+- **Custom Hooks**
+  - `useExpenses`: Expense CRUD operations
+  - `useUsers`: User management operations
+  - `useNotifications`: Notification handling
+  - `useForm`: Form state and validation
+  - `useError`: Error handling and tracking
+  
+- **Reusable Components**
+  - Button with variants (primary/secondary/danger)
+  - Dialog modals with animations
+  - Toast notifications
+  - Loading states and spinners
+  - Error boundaries
+  - Form components with validation
 
-## Project Structure
-
-```
-src/
-├── components/        # React components
-│   ├── Admin/        # Admin-specific components
-│   └── ui/           # Reusable UI components
-├── context/          # React context providers
-├── hooks/            # Custom React hooks
-├── lib/              # Utility functions and constants
-├── routes/           # Route components and configurations
-└── assets/          # Static assets
-```
-
-## Components Overview
-
-### Core Components
-- `Dashboard`: Main interface for expense management
-- `ExpenseForm`: Form for creating/editing expenses
-- `ExpenseList`: Displays list of expenses with filtering
-- `ExpenseCard`: Individual expense display component
-- `DashboardHeader`: Navigation and user menu
-- `Sidebar`: Navigation sidebar with collapsible design
-
-### Admin Components
-- `AdminPage`: Admin dashboard interface
-- `AddUser`: User creation/editing form
-- `SearchUser`: User search and management interface
-
-### UI Components
-- `Button`: Reusable button component with variants
-- `Card`: Container component with different styles
-- `Dialog`: Modal dialog component
-- `Toast`: Notification toast component
-- `LoadingState`: Loading indicators
-- `ErrorBoundary`: Error handling component
-
-## Security Features
-
-- Protected routes with role-based access
-- Token-based authentication
-- Secure file upload for receipts
-- Input validation and sanitization
+### Security Features
+- JWT token management
+- File upload validation
+- Input sanitization
 - Error boundary implementation
+- Protected API endpoints
+- CORS configuration
 
-## Getting Started
+### UI/UX Features
+- Responsive design for all devices
+- Collapsible sidebar navigation
+- Dark mode support
+- Loading states and animations
+- Form validation feedback
+- Error handling with user-friendly messages
+- Accessible components (ARIA labels)
 
-1. Clone the repository
-2. Install dependencies:
+## 🚀 Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone [repository-url]
+   cd ers-frontend
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
-3. Configure environment variables:
+
+3. **Configure environment**
+   Create a `.env` file:
    ```env
    VITE_API_BASE_URL=your_api_url
+   VITE_API_TIMEOUT=30000
+   VITE_MAX_FILE_SIZE=5242880
    ```
-4. Start the development server:
+
+4. **Start development server**
    ```bash
    npm run dev
    ```
 
-## Best Practices
+   Visit `http://localhost:5173`
 
-- Component-based architecture
-- Responsive design principles
-- Error handling and loading states
-- Form validation
-- Accessibility considerations
-- Performance optimizations
+## 📁 Project Structure
 
-## Contributing
+```
+src/
+├── components/           # React components
+│   ├── Admin/           # Admin portal components
+│   ├── ui/              # Reusable UI components
+│   └── ...             # Feature components
+├── context/            # React context providers
+├── hooks/              # Custom React hooks
+├── lib/               # Utilities & constants
+├── routes/            # Route configurations
+└── assets/           # Static assets
+```
+
+## 🧪 Testing
+
+- Unit tests with Jest
+- Component testing with React Testing Library
+- End-to-end testing with Cypress
+
+## 📚 Documentation
+
+For detailed documentation, check:
+- [Component Documentation](./docs/components.md)
+- [API Integration Guide](./docs/api.md)
+- [Testing Guide](./docs/testing.md)
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create your feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a pull request
+5. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is private and confidential. All rights reserved.
 
 ---
 
-For more information or support, please contact the development team.
+Built with ❤️ by the ERS Development Team
